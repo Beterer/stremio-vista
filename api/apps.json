@@ -1,0 +1,33 @@
+{
+  "paging": {
+    "page": 1,
+    "count": 1,
+    "maxPage": 1,
+    "itemsTotal": 1
+  },
+  "packages": [
+    {
+      "id": "tv.stremioorigin.app",
+      "title": "Stremio Origin",
+      "iconUri": "https://stremio-origin.github.io/webos/icon.png",
+      "pool": "main",
+      "manifestUrl": "https://stremio-origin.github.io/webos/api/apps/tv.stremioorigin.app/manifest.json",
+      "shortDescription": "Native app for Stremio addons on LG webOS TVs. Unofficial.",
+      "fullDescriptionUrl": "apps/tv.stremioorigin.app/full_description.html",
+      "manifest": {
+        "id": "tv.stremioorigin.app",
+        "version": "1.0.0",
+        "type": "native",
+        "title": "Stremio Origin",
+        "appDescription": "Your own Stremio account and addons on your LG TV: artwork, trailers, the best stream in one press, subtitles, torrents, 11 languages. Unofficial.",
+        "iconUri": "https://stremio-origin.github.io/webos/icon.png",
+        "sourceUrl": "https://github.com/stremio-origin/webos",
+        "rootRequired": false,
+        "ipkUrl": "https://stremio-origin.github.io/webos/tv.stremioorigin.app_1.0.0_arm.ipk",
+        "ipkHash": {
+          "sha256": "949d4eabafb7290258eae8ad9e405e7f8f31f4c030071039258f382ca7769a42"
+        }
+      }
+    }
+  ]
+}
