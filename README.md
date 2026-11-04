@@ -38,6 +38,10 @@ For LG TVs running webOS 3 and later (ARM). It should work on all of them, but i
 - No analytics. Nothing is sent to the developer.
 - Logs stay on the TV. Sharing them is your choice: the app seals them and shows a short code.
 
+## Development
+See [local development](docs/development.md) for the Windows/Docker toolchain,
+build and test commands, VS Code setup, and TV deployment prerequisites.
+
 ## Support
 - Issues: https://github.com/stremio-origin/webos/issues
 - Support: https://ko-fi.com/simussu

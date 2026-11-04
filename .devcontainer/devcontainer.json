@@ -1,0 +1,12 @@
+{
+  "name": "webOS native development",
+  "build": { "dockerfile": "Dockerfile" },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "runArgs": ["--init"],
+  "mounts": ["source=webos-dev-cache,target=/opt/origin-build,type=volume"],
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": { "extensions": ["llvm-vs-code-extensions.vscode-clangd"] }
+  }
+}

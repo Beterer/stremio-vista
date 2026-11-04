@@ -1,0 +1,7 @@
+# The shared fallback flags describe the C TV application. Index C++ helpers
+# with the host standard library; their real build still targets ARM via Zig.
+If:
+  PathMatch: .*\.cpp
+CompileFlags:
+  Remove: [-std=c11, --target=*, --sysroot=*, -mcpu=*, -mfloat-abi=*]
+  Add: [-std=c++20, -I/opt/origin-build/engine/src/include]
