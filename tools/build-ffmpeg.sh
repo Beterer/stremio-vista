@@ -2,6 +2,7 @@
 # Builds the sound converter library the app loads when a file's only sound is one the TV can't decode (DTS, TrueHD):
 #   tools/build-ffmpeg.sh webos  -> build/webos/libsbdts.so      (ARMv7 soft-float, glibc 2.17)
 #   tools/build-ffmpeg.sh mac    -> build/mac/libsbdts.dylib     (the Mac preview)
+#   tools/build-ffmpeg.sh linux  -> build/linux/libsbdts.so      (host-side media tests)
 # Inside: tools/dts/sbdts.c (Matroska / MP4 in, MPEG-TS segments out: video copied, a Dolby Vision profile 7 picture
 # as 8.1, the chosen track decoded and encoded as AC3 or copied) over a minimal static FFmpeg (LGPL 2.1+, no GPL or nonfree parts, no network code: every read goes
 # through the app's own range reader). The exact configure line, the source pin and the LGPL text are kept in
@@ -11,7 +12,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ORIGIN_BUILD="${ORIGIN_BUILD:-$HOME/origin-build}"   # the private build folder outside the repo: toolchain, SDK, sources, keys
 TARGET="${1:-webos}"
-W="${FFMPEG_WORK:-$ORIGIN_BUILD/ffmpeg}"; mkdir -p "$W"
+W="${FFMPEG_WORK:-$ORIGIN_BUILD/ffmpeg}"; mkdir -p "$W" "$ORIGIN_BUILD/src"
 ZIG="${ZIG:-$ORIGIN_BUILD/zig-aarch64-macos-0.17.0/zig}"
 SDK="${SDK:-$ORIGIN_BUILD/sdk/arm-webos-linux-gnueabi_sdk-buildroot/arm-webos-linux-gnueabi/sysroot}"
 VERSION=7.1.1
@@ -41,13 +42,15 @@ case "$TARGET" in
     OUT="$ROOT/build/webos/libsbdts.so" ;;
   mac)
     ARCH="--cc=cc"; XC="-O2 -ffile-prefix-map=$HOME=/src"; XL=""; OUT="$ROOT/build/mac/libsbdts.dylib" ;;
+  linux)
+    ARCH="--cc=cc"; XC="-O2 -ffile-prefix-map=$HOME=/src"; XL=""; OUT="$ROOT/build/linux/libsbdts.so" ;;
   *) echo "unknown target $TARGET"; exit 1 ;;
 esac
 CONF="$COMMON $COMPONENTS $ARCH"
 if [ ! -f "$P/lib/libavformat.a" ] || [ "$(cat "$B/.conf" 2>/dev/null)" != "$CONF $XC" ]; then
   echo "== FFmpeg $VERSION ($TARGET)"
   (cd "$B" && "$SRC/configure" --prefix="$P" $CONF --extra-cflags="$XC" --extra-ldflags="$XL" >/dev/null \
-    && { [ "$TARGET" != webos ] || sed -i '' 's/#define HAVE_SYSCTL 1/#define HAVE_SYSCTL 0/' config.h; } \
+    && { [ "$TARGET" != webos ] || python3 -c 'from pathlib import Path; p = Path("config.h"); p.write_text(p.read_text().replace("#define HAVE_SYSCTL 1", "#define HAVE_SYSCTL 0"))'; } \
     && make -j"${FFMPEG_JOBS:-4}" >/dev/null && make install >/dev/null)   # (the compiler's newer libc headers make configure see a sysctl glibc 2.17 never had)
   echo "$CONF $XC" > "$B/.conf"
 fi
@@ -63,7 +66,7 @@ cp "$SRC/COPYING.LGPLv2.1" "$L/ffmpeg-LGPL-2.1.txt"
 # The Dolby Vision step: tools/dovi (libdovi 3.3.2, MIT, pinned in Cargo.lock) as a static library, its licenses beside
 # FFmpeg's. Rust's armv7-unknown-linux-gnueabi is the soft-float ABI the app uses, built for glibc 2.17; its unwinding
 # symbols come from the TV's libgcc_s. Its source paths are rewritten (the build machine's folders never travel).
-case "$TARGET" in webos) RT=armv7-unknown-linux-gnueabi ;; mac) RT=$(rustc -vV | sed -n 's/^host: //p') ;; esac
+case "$TARGET" in webos) RT=armv7-unknown-linux-gnueabi ;; mac|linux) RT=$(rustc -vV | sed -n 's/^host: //p') ;; esac
 DV="$ORIGIN_BUILD/dovi"
 RUSTFLAGS="--remap-path-prefix=$HOME=/src --remap-path-prefix=$ROOT=/app" cargo build --manifest-path "$ROOT/tools/dovi/Cargo.toml" --locked --release --target "$RT" --target-dir "$DV/target" >/dev/null 2>&1 \
   || { echo "the Dolby Vision library didn't build (rustup target add $RT)"; exit 1; }
@@ -86,7 +89,11 @@ if [ "$TARGET" = webos ]; then
   echo '{ global: sbd_get; local: *; };' > "$TC/exports.map"
   "$TC/cc" -std=c11 -O2 -fPIC -shared -fvisibility=hidden -D_GNU_SOURCE -I"$P/include" -I"$ROOT/src" -ffile-prefix-map=$HOME=/src -ffile-prefix-map=$ROOT=/app \
     "$ROOT/tools/dts/sbdts.c" $LIBS "$SDK/usr/lib/libz.so" "$SDK/lib/libgcc_s.so.1" -Wl,--gc-sections -Wl,--version-script="$TC/exports.map" -Wl,--strip-all -Wl,-soname,libsbdts.so -lpthread -lm -o "$OUT"
-else
+elif [ "$TARGET" = mac ]; then
   cc -std=c11 -O2 -shared -fvisibility=hidden -D_GNU_SOURCE -I"$P/include" -I"$ROOT/src" "$ROOT/tools/dts/sbdts.c" $LIBS -lz -Wl,-dead_strip -o "$OUT"
+else
+  TC="$W/tc-linux"; mkdir -p "$TC"
+  echo '{ global: sbd_get; local: *; };' > "$TC/exports.map"
+  cc -std=c11 -O2 -fPIC -shared -fvisibility=hidden -D_GNU_SOURCE -I"$P/include" -I"$ROOT/src" "$ROOT/tools/dts/sbdts.c" $LIBS -lz -ldl -lpthread -lm -Wl,--gc-sections -Wl,--version-script="$TC/exports.map" -o "$OUT"
 fi
 ls -l "$OUT" | awk '{printf "%s  %.1f MB\n", $NF, $5/1048576}'
