@@ -112,7 +112,8 @@ static void load_catalog_rows(Board *b, int disc, int keep) {
     if (!r && nwas == 1) { Row *z = row_add(b, "Continue Watching", 1, 0); /* its last title taken out: the row stays a moment, the title fading and shrinking in it, then closes as the rows under it move up */
       if (z) { z->hidden = 0; z->closing = 1; z->closeAt = app_now(); z->hk = 1; b->remIt = was[0]; b->remRow = (int)(z - b->rows); b->remIdx = 0; b->remAt = app_now(); } }
     free(was); }
-  CatalogDef defs[12]; int nd = disc ? sb_disc_defs(defs, 12) : sb_home_defs(defs, 12);
+  /* Home shares Discover's catalogs, with its Continue Watching row above them. */
+  CatalogDef defs[12]; int nd = sb_disc_defs(defs, 12);
   for (int d = 0; d < nd; d++) { Row *r = row_add(b, defs[d].title, 0, 0); if (!r) break; int ri = (int)(r - b->rows); if (keep && ri < MAXROWS) r->col = oldCols[ri]; r->def = defs[d]; r->hasDef = 1; sb_catalog(&defs[d], on_catalog, tok(b, ri)); }
   if (keep) { b->rowIdx = oldRow < b->n ? oldRow : (b->n ? b->n - 1 : 0); if (b->rowIdx < b->n && b->rows[b->rowIdx].closing) { int nx = first_visible_row(b, b->rowIdx + 1, 1); if (nx >= 0) b->rowIdx = nx; } /* (never on the row closing) */ for (int j = 0; j < b->n; j++) { Row *r = &b->rows[j]; if (r->items.n && r->col >= r->items.n) r->col = r->items.n - 1; } }
   else b->rowIdx = 0;
@@ -589,17 +590,17 @@ static int board_warm(Board *b) {
     cards = first_cards(b, b->kind == 1 ? 1 : 2); }
   return loc && pics && cards && sb_meta_cached(it->type, it->id) != NULL;
 }
-/* right after start: Discover, Home and the Library get their first screen ready one after the other, a little
+/* right after start: Home and the Library get their first screen ready one after the other, a little
    at a time (every quarter second, never while the remote moves), so a tab switch never shows a first load; each
    gets 10 s at most */
 void tabs_warm_tick(void) {
   static double t0, next, tabAt; static int step;
-  if (step >= 3 || !app_splash_done || SCR == SCR_LOGIN || player_open()) return;
+  if (step >= 2 || !app_splash_done || SCR == SCR_LOGIN || player_open()) return;
   double now = app_now(); if (!t0) { t0 = now + 1.5; return; } /* the first screen settles first */
   if (now < t0 || now < next || app_idle() < 0.6f) return; next = now + 0.25;
   if (!tabAt) tabAt = now;
-  int done = step == 0 ? board_warm(&boards[1]) : step == 1 ? board_warm(&boards[0]) : lib_warm();
-  if (done || now - tabAt > 10) { static const char *const nm[3] = { "Discover", "Home", "Library" }; fprintf(stderr, "[warm] %s %s in %.1f s\n", nm[step], done ? "ready" : "gave up", now - tabAt); step++; tabAt = 0; }
+  int done = step == 0 ? board_warm(&boards[0]) : lib_warm();
+  if (done || now - tabAt > 10) { static const char *const nm[2] = { "Home", "Library" }; fprintf(stderr, "[warm] %s %s in %.1f s\n", nm[step], done ? "ready" : "gave up", now - tabAt); step++; tabAt = 0; }
 }
 void board_invalidate(void) { boards[0].built = 0; }
 /* the bar hands the focus down: the first row (Discover: its spotlight) */

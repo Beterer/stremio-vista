@@ -25,8 +25,7 @@ static const Step LOOP[] = {
   K(K_DOWN, 1, 0, 400), K(K_RIGHT, 2, 200, 300), K(K_OK, 1, 0, 1800), /* a row below the first: OK on Continue Watching plays */ K(K_RIGHT, 3, 250, 300), K(K_DOWN, 3, 400, 1200), K(K_RIGHT, 4, 200, 400), HOME,
   /* the card menu (hold OK), down its entries, away */
   { A_HOLDOK, 0, 0, 0, 900 }, K(K_DOWN, 3, 200, 300), HOME,
-  /* tabs: Discover (spotlight, rows), Library, back to Home, quickly */
-  K(K_UP, 1, 0, 400), K(K_LEFT, 1, 0, 2500), K(K_DOWN, 2, 300, 300), K(K_RIGHT, 16, 110, 300), K(K_UP, 3, 300, 4500), HOME,
+  /* tabs: Library, back to Home, then rapid switches through the bar */
   K(K_UP, 1, 0, 300), K(K_RIGHT, 1, 0, 2500), K(K_DOWN, 1, 0, 300), K(K_RIGHT, 6, 150, 300), K(K_DOWN, 3, 250, 600), HOME,
   K(K_UP, 1, 0, 300), K(K_LEFT, 1, 0, 1500), K(K_RIGHT, 1, 0, 300), K(K_LEFT, 1, 0, 300), K(K_RIGHT, 2, 300, 1500), HOME,
   /* Search: a few letters, results, away */

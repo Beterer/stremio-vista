@@ -16,7 +16,7 @@ Run these from the repository root in PowerShell:
 .\tools\dev.ps1 doctor      # Check installed tools and the TV sysroot
 .\tools\dev.ps1 build       # Build the ARM TV executable
 .\tools\dev.ps1 libraries   # Build torrent, audio-conversion, Dolby Vision libraries
-.\tools\dev.ps1 test        # Log/crypto checks, Rust tests, scoring smoke checks
+.\tools\dev.ps1 test        # Log/crypto, Rust, board/navigation, scoring checks
 .\tools\dev.ps1 test-media  # Build host converter; test generated DTS media and seeking
 .\tools\dev.ps1 package     # Rebuild executable and create dist/*.ipk
 .\tools\dev.ps1 shell       # Interactive Bash with all tools configured
@@ -46,6 +46,11 @@ preview target exists; the existing `mac` target requires macOS and SDL2.
 
 `test` exercises log sealing/scrubbing, the Dolby Vision Rust unit tests, and all
 scoring fixtures across four TV capability profiles and five connection speeds.
+The board harness checks Continue Watching followed by discovery catalogs, empty
+history, stale catalog replies, and the Home/Library navigation layout in both
+text directions. It runs the production row/layout code with network and rendering
+dependencies stubbed in the configured Linux image using the SDK headers; TV
+navigation and appearance still need device verification.
 Scoring smoke checks validate execution and selection consistency; they do not
 replace the independent web-app comparison.
 

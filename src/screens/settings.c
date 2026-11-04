@@ -568,19 +568,19 @@ static void preview_look(float x, float y, float w, float h) {
     lglass_shell(tx2, y + 12, tw2, 30, 15, BLACK_A(120), 0.9f); text_draw(pv, tx2 + tw2 / 2, y + 27 - text_line_height(18) / 2.0f, 18, 700, WHITE_A(220), 1.2f, 0, ALIGN_CENTER); }
   /* the bar, as the app draws it: one piece of liquid glass behind the three tabs, a light wandering it and bending the
      picture under it, and the focus gliding from tab to tab as accent glass that stretches as it goes */
-  static const char *TB[3] = { "Discover", "Home", "Library" }; float tbw[3], tot = 0; for (int i = 0; i < 3; i++) { tbw[i] = text_width(T(TB[i]), 20, 700, 0) + 28; tot += tbw[i]; }
+  static const char *TB[2] = { "Home", "Library" }; float tbw[2], tot = 0; for (int i = 0; i < 2; i++) { tbw[i] = text_width(T(TB[i]), 20, 700, 0) + 28; tot += tbw[i]; }
   float txx = mx + mw / 2 - tot / 2, tyy = y + 30, ch = 40, cx0 = txx - 6, cwid = tot + 12; GLuint gt = prev_glass(w, h);
   { float su = 0.5f + 0.4f * (0.55f * sinf(t * 0.27f) + 0.3f * sinf(t * 0.43f + 2.0f) + 0.15f * sinf(t * 0.71f + 4.4f)), svv = 0.32f + 0.1f * sinf(t * 0.33f + 1.0f);
     gfx_shadow(cx0, tyy - ch / 2 + 6, cwid, ch, ch / 2, 20, BLACK_A(64));
     if (gt) { gfx_liquid_spot(su, svv, 1.0f); prev_liquid(gt, x, y, w, h, cx0, tyy - ch / 2, cwid, ch, fminf(ch * 0.5f, 16), 0); gfx_rrect(cx0, tyy - ch / 2, cwid, ch, ch / 2, RGBA(10, 10, 16, 18)); }
     lglass_light(su - 0.12f); lglass_shell(cx0, tyy - ch / 2, cwid, ch, ch / 2, 0, 0.85f); lglass_light(0);
     gfx_rrect(cx0, tyy - ch / 2, cwid, ch, ch / 2, col_alpha(c1, 0.08f)); }
-  { static Tween fx, fw; static float sv, lx; static int seen; int fi = (int)(t / 2.2f) % 3; float px = txx; for (int i = 0; i < fi; i++) px += tbw[i]; /* the focus moves on every 2.2 s */
+  { static Tween fx, fw; static float sv, lx; static int seen; int fi = (int)(t / 2.2f) % 2; float px = txx; for (int i = 0; i < fi; i++) px += tbw[i]; /* the focus moves on every 2.2 s */
     if (!seen) { tween_set(&fx, px); tween_set(&fw, tbw[fi]); seen = 1; } else { if (fx.to != px) tween_to(&fx, px, 0.32f, GLIDE_EASE); if (fw.to != tbw[fi]) tween_to(&fw, tbw[fi], 0.32f, GLIDE_EASE); } tween_tick(&fx, app_dt()); tween_tick(&fw, app_dt());
     float x0 = lx; lglass_stretch(&sv, &lx, fx.v, app_dt()); float dir = fx.v > x0 ? 1 : fx.v < x0 ? -1 : 0, sw = fw.v * (1 + 0.22f * sv), sh = 34 * (1 - 0.10f * sv), ppx = fx.v + fw.v / 2 - sw / 2, ppy = tyy - sh / 2;
     if (gt) prev_liquid(gt, x, y, w, h, ppx, ppy, sw, sh, fminf(sh * 0.6f, 20) * (1 + 0.25f * sv), -dir * sv * 4.0f / w);
     gfx_rrect_v(ppx, ppy, sw, sh, sh / 2, col_alpha(c2, 0.46f), col_alpha(c1, 0.36f)); gfx_rrect_v(ppx, ppy, sw, sh, sh / 2, WHITE_A(40), WHITE_A(0)); gfx_ring(ppx, ppy, sw, sh, sh / 2, 1.2f, WHITE_A(70));
-    float tx3 = txx; for (int i = 0; i < 3; i++) { int f = i == fi; text_draw(T(TB[i]), tx3 + tbw[i] / 2, tyy - text_line_height(20) / 2.0f, 20, f ? 700 : 500, f ? WHITE_A(250) : WHITE_A(170), 0, 0, ALIGN_CENTER); tx3 += tbw[i]; } }
+    float tx3 = txx; for (int i = 0; i < 2; i++) { int f = i == fi; text_draw(T(TB[i]), tx3 + tbw[i] / 2, tyy - text_line_height(20) / 2.0f, 20, f ? 700 : 500, f ? WHITE_A(250) : WHITE_A(170), 0, 0, ALIGN_CENTER); tx3 += tbw[i]; } }
   const char *pl = T("Play"), *sn = T1("Season {n}", "n", "1"); float plw = 40 + text_width(pl, 20, 700, 0) + 18, snw = text_width(sn, 18, 600, 0) + 30;
   float ey = mid - 6, eh = 40, ex = mx + mw / 2 - (plw + 18 + 46 + 18 + snw) / 2; /* centred under the tabs */
   gfx_scale_push(pulse, pulse, mx + mw / 2, ey);

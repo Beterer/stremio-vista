@@ -13,7 +13,7 @@
 <p align="center">You bring your own Stremio account and your own addons. The app ships empty, hosts and indexes nothing, and plays only the stream links your addons return.</p>
 
 ## Features
-- Home, Discover, Library and Search from your addons, with artwork, logos and trailers
+- Home with Continue Watching first, followed by discovery catalogs, plus Library and Search, with artwork, logos and trailers
 - The best stream for your TV and connection, picked in one press
 - Buttons and highlights take their colour from each title's logo or artwork
 - People, reviews and a spotlight of what's new on every title

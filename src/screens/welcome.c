@@ -173,7 +173,7 @@ static void hero(int i, float x, float y) {
 }
 /* the top bar as the app draws it: Settings and Search at the corners with their key's dot, the tabs in the middle
    (cur: the page you are on, -1 none; pill: the focused tab, -1 none), the clock. setF / searchF: the corner in focus */
-static float tabX[3], tabW[3];
+static float tabX[2], tabW[2];
 /* the bar's liquid glass over the scene's backdrop (its shading there laid over it, as the app's baked layers have it) */
 static void wglass(float x, float y, float w, float h, float r, float k, int seed) {
   float cx = x + w / 2, cy = y + h / 2, dh = 0.94f * cl01(1 - cx / 1400), dv = cy > 360 ? 0.97f * cl01((cy - 360) / (SB_H - 360)) : 0;
@@ -197,17 +197,17 @@ static void corner(float x, float f, const char *icon, uint32_t dot, float rot, 
   if (ps < 1) gfx_scale_pop();
 }
 static void topbar(int cur, float pill, float setF, float searchF, float libPing) {
-  static const char *NM[3] = { "Discover", "Home", "Library" }; float tot = 0;
-  for (int i = 0; i < 3; i++) { tabW[i] = text_width(T(NM[i]), 32, i == cur ? 700 : 400, 0) + 80; tot += tabW[i] + 18; }
-  float x = SB_W / 2 - (tot - 18) / 2; for (int i = 0; i < 3; i++) { tabX[i] = x; x += tabW[i] + 18; }
-  wglass(tabX[0] - 8, 50 - 39, tabX[2] + tabW[2] + 8 - (tabX[0] - 8), 78, 39, pill >= 0 ? 1.15f : 0.85f, 0); /* the tabs' capsule */
-  if (pill >= 0) { int a = (int)pill; float f = pill - a; int b = a < 2 ? a + 1 : 2; float px = tabX[a] + (tabX[b] - tabX[a]) * f, pw = tabW[a] + (tabW[b] - tabW[a]) * f;
+  static const char *NM[2] = { "Home", "Library" }; float tot = 0;
+  for (int i = 0; i < 2; i++) { tabW[i] = text_width(T(NM[i]), 32, i == cur ? 700 : 400, 0) + 80; tot += tabW[i] + 18; }
+  float x = SB_W / 2 - (tot - 18) / 2; for (int i = 0; i < 2; i++) { tabX[i] = x; x += tabW[i] + 18; }
+  wglass(tabX[0] - 8, 50 - 39, tabX[1] + tabW[1] + 8 - (tabX[0] - 8), 78, 39, pill >= 0 ? 1.15f : 0.85f, 0); /* the tabs' capsule */
+  if (pill >= 0) { int a = (int)pill; float f = pill - a; int b = a < 1 ? a + 1 : 1; float px = tabX[a] + (tabX[b] - tabX[a]) * f, pw = tabW[a] + (tabW[b] - tabW[a]) * f;
     gfx_rrect_v(px, 50 - 31, pw, 62, 31, col_alpha(ACC2 | 0xff000000u, 0.46f), col_alpha(ACC | 0xff000000u, 0.36f)); gfx_rrect_v(px, 50 - 31, pw, 62, 31, WHITE_A(40), WHITE_A(0));
     gfx_ring(px, 50 - 31, pw, 62, 31, 1.2f, WHITE_A(70)); } /* the focus: accent glass */
-  for (int i = 0; i < 3; i++) { int on = i == cur || (pill >= 0 && fabsf(pill - i) < 0.5f);
+  for (int i = 0; i < 2; i++) { int on = i == cur || (pill >= 0 && fabsf(pill - i) < 0.5f);
     if (i == cur && pill < 0) { gfx_rrect(tabX[i], 50 - 30, tabW[i], 60, 30, WHITE_A(20)); gfx_ring(tabX[i], 50 - 30, tabW[i], 60, 30, 1, WHITE_A(46)); } /* the page shown: a softer piece of glass */
     text_draw(T(NM[i]), tabX[i] + tabW[i] / 2, 50 - text_line_height(32) / 2.0f, 32, on ? 700 : 400, on ? WHITE_A(255) : WHITE_A(184), 0, 0, ALIGN_CENTER);
-    if (i == 2 && libPing > 0) { float k = libPing; gfx_circle(tabX[i] + tabW[i] - 26, 34, 6 * fminf(1, 2 * k), ACC2); gfx_ring_out(tabX[i] + tabW[i] - 26 - 6 - 14 * k, 34 - 6 - 14 * k, 12 + 28 * k, 12 + 28 * k, 6 + 14 * k, 2, col_alpha(ACC2, 1 - k)); } }
+    if (i == 1 && libPing > 0) { float k = libPing; gfx_circle(tabX[i] + tabW[i] - 26, 34, 6 * fminf(1, 2 * k), ACC2); gfx_ring_out(tabX[i] + tabW[i] - 26 - 6 - 14 * k, 34 - 6 - 14 * k, 12 + 28 * k, 12 + 28 * k, 6 + 14 * k, 2, col_alpha(ACC2, 1 - k)); } }
   corner(128, searchF, "nav_search", RGB(0x2f, 0xd6, 0x6b), 0, 2);
   corner(40, setF, "nav_set", RGB(0xef, 0x3b, 0x3b), 90 * ease_apply(EASE_OUT, setF), 1);
   lglass_light(0); app_clock_draw(SB_W - 56, 50, 1);
@@ -315,12 +315,12 @@ static void sc_keys(int st, float t) {
     if (pa > 0.004f) { gfx_scale_push(s, s, red ? 78 : 166, 50);
       if (red) settings_page(pa, -1, 0, 0); else { int ty = t < 2.3f ? 0 : t < 2.6f ? 1 : t < 2.9f ? 2 : t < 3.2f ? 3 : 4; for (int k = 0; k < 4; k++) push(2.3f + 0.3f * k, L, ORB_OK, 0.25f); search_page(pa, ty, cl01((t - 3.3f) / 0.8f), 0); }
       gfx_scale_pop(); }
-    topbar(pa > 0.5f ? -1 : 1, -1, red ? vis(t, 1.2f, 5.4f, 0.25f) : 0, red ? 0 : vis(t, 1.2f, 5.4f, 0.25f), 0);
+    topbar(pa > 0.5f ? -1 : 0, -1, red ? vis(t, 1.2f, 5.4f, 0.25f) : 0, red ? 0 : vis(t, 1.2f, 5.4f, 0.25f), 0);
     press(red ? K_RED : K_GREEN, T(red ? "Settings" : "Search"), vis(t, 0.6f, 1.8f, 0.2f), (t - 1.0f) / 0.35f, SB_W / 2, PRESS_Y);
     press(K_BACK, T("Back"), vis(t, 4.7f, 5.8f, 0.2f), (t - 5.0f) / 0.35f, SB_W / 2, PRESS_Y);
   } else if (st == 2) { /* the arrows along the row, then OK opens the title */
     float L = 7.0f; t = fmodf(t, L); int f = t < 0.8f ? 0 : t < 1.6f ? 1 : t < 2.4f ? 2 : 3; float op = vis(t, 3.4f, 6.4f, 0.35f);
-    home(-1, f, 0, 0); topbar(1, -1, 0, 0, 0);
+    home(-1, f, 0, 0); topbar(0, -1, 0, 0, 0);
     if (op > 0.004f) { gfx_opacity_push(op); gfx_scale_push(0.96f + 0.04f * op, 0.96f + 0.04f * op, SB_W / 2, SB_H / 2); backdrop(3, 0.7f); logo(3, 96, 520, 760, 230); const Item *it = si(3);
       if (it) { meta_draw(it->metaLine, "", it->name, 96, 560, 28, WHITE_A(225), ALIGN_LEFT); text_draw_wrapped(it->description, 96, 620, 1000, 3, 29, 400, WHITE_A(210), 0, ALIGN_LEFT, 42); }
       gfx_rrect(96, 800, 260, 84, 42, WHITE_A(255)); icon_draw("play", 130, 824, 36, RGB(17, 17, 17)); text_draw(T("Play"), 180, 842 - text_line_height(30) / 2.0f, 30, 700, RGB(17, 17, 17), 0, 0, ALIGN_LEFT);
@@ -329,13 +329,13 @@ static void sc_keys(int st, float t) {
     press(K_RIGHT, T("Move"), vis(t, 0.5f, 2.8f, 0.2f), fmodf(t - 0.6f, 0.8f) / 0.35f, SB_W / 2, PRESS_Y);
     press(K_OK, T("Open"), vis(t, 3.0f, 4.0f, 0.2f), (t - 3.3f) / 0.35f, SB_W / 2, PRESS_Y);
   } else { /* Back: from a page's row to its tabs, then to Home */
-    float L = 6.5f; t = fmodf(t, L); float up = sstep(1.2f, 1.5f, t), home2 = sstep(3.3f, 3.8f, t), pill = up > 0.5f ? 0 + glide(3.3f, t) : -1;
-    gfx_offset_push(-90 * home2, 0); gfx_opacity_push(1 - home2); backdrop(5, 1); hero(5, 64, 110);
+    float L = 6.5f; t = fmodf(t, L); float up = sstep(1.2f, 1.5f, t), home2 = sstep(3.3f, 3.8f, t), pill = up > 0.5f ? 1 - glide(3.3f, t) : -1;
+    gfx_offset_push(90 * home2, 0); gfx_opacity_push(1 - home2); backdrop(5, 1); hero(5, 64, 110);
     text_draw(T("Popular"), 52, 496, 31, 700, RGB(0xe9, 0xe9, 0xee), -0.3f, SB_W - 104, ALIGN_LEFT);
     for (int i = 0; i < 7; i++) card_at(20 + i, i + 5, 48 + i * 328, rowY(), 300, 450, i == 2 && up < 0.5f, 0); gfx_opacity_pop(); gfx_offset_pop();
-    if (home2 > 0.004f) { gfx_offset_push(90 * (1 - home2), 0); gfx_opacity_push(home2); home(-1, -1, 0, 0); gfx_opacity_pop(); gfx_offset_pop(); }
-    topbar(home2 > 0.5f ? 1 : 0, pill, 0, 0, 0);
-    push(1.2f, L, ORB_BACK, 0.6f); push(3.3f, L, ORB_TAB_R, 0.8f);
+    if (home2 > 0.004f) { gfx_offset_push(-90 * (1 - home2), 0); gfx_opacity_push(home2); home(-1, -1, 0, 0); gfx_opacity_pop(); gfx_offset_pop(); }
+    topbar(home2 > 0.5f ? 0 : 1, pill, 0, 0, 0);
+    push(1.2f, L, ORB_BACK, 0.6f); push(3.3f, L, ORB_TAB_L, 0.8f);
     press(K_BACK, T("Back"), vis(t, 0.7f, 4.4f, 0.2f), t < 2.5f ? (t - 1.0f) / 0.35f : (t - 3.1f) / 0.35f, SB_W / 2, PRESS_Y);
   }
 }
@@ -360,15 +360,15 @@ static void menu(float m, float sel, float ck) { /* the card menu's own layout, 
 static void sc_hold(int st, float t) {
   float cx = 48 + 328, cy = rowY();
   if (st == 0) { float L = 5.0f; t = fmodf(t, L); float hp = cl01((t - 0.5f) / 1.2f), held = t > 0.4f && t < 1.8f ? hp : 0, m = eo(1.7f, 2.0f, t) * (1 - eo(4.4f, 4.7f, t));
-    home(1, 1, held, 0); topbar(1, -1, 0, 0, 0); menu(m, 0, 0); push(1.7f, L, ORB_HOLD, 1);
+    home(1, 1, held, 0); topbar(0, -1, 0, 0, 0); menu(m, 0, 0); push(1.7f, L, ORB_HOLD, 1);
     press(K_OK, T("Hold"), vis(t, 0.2f, 2.0f, 0.2f), 0, 560, PRESS_Y); return; }
   if (st == 1) { float L = 7.0f; t = fmodf(t, L); float m = eo(0, 0.2f, t) * (1 - eo(3.0f, 3.3f, t)), sel = 0; for (int k = 0; k < 5; k++) sel += glide(0.6f + 0.25f * k, t);
     float ck = eo(2.5f, 2.7f, t), c = (t - 3.05f) / 0.85f;
     home(1, 1, 0, 0);
     float il = vis(t, 3.9f, 6.8f, 0.3f); if (il > 0) { const char *s = T("In Library"); float w = text_width(s, 22, 700, 0) + 30; gfx_opacity_push(il);
       gfx_rrect(cx + 300 - 14 - w, cy + 14, w, 40, 20, RGBA(12, 11, 17, 200)); gfx_ring(cx + 300 - 14 - w, cy + 14, w, 40, 20, 1, col_alpha(ACC2, 0.8f)); text_draw(s, cx + 300 - 14 - w / 2, cy + 34 - text_line_height(22) / 2.0f, 22, 700, ACC2, 0, 0, ALIGN_CENTER); gfx_opacity_pop(); }
-    topbar(1, -1, 0, 0, vis(t, 3.85f, 5.0f, 0.1f) > 0 ? cl01((t - 3.85f) / 1.0f) : 0); menu(m, sel, ck);
-    if (c > 0 && c < 1) { float e = ease_apply(EASE_IN_OUT, c), sx = cx + 150, sy = cy + 225, ex = tabX[2] + tabW[2] / 2, ey = 50, px = bez(sx, (sx + ex) / 2, ex, e), py = bez(sy, fminf(sy, ey) - 120, ey, e), s = 1 - 0.55f * e;
+    topbar(0, -1, 0, 0, vis(t, 3.85f, 5.0f, 0.1f) > 0 ? cl01((t - 3.85f) / 1.0f) : 0); menu(m, sel, ck);
+    if (c > 0 && c < 1) { float e = ease_apply(EASE_IN_OUT, c), sx = cx + 150, sy = cy + 225, ex = tabX[1] + tabW[1] / 2, ey = 50, px = bez(sx, (sx + ex) / 2, ex, e), py = bez(sy, fminf(sy, ey) - 120, ey, e), s = 1 - 0.55f * e;
       const char *l = T("Added to Library"); float w = text_width(l, 26, 600, 0) + 96;
       gfx_opacity_push(1 - sstep(0.85f, 1, c)); gfx_scale_push(s, s, px, py); gfx_shadow(px - w / 2, py - 30 + 8, w, 60, 30, 24, BLACK_A(120));
       gfx_rrect(px - w / 2, py - 30, w, 60, 30, RGBA(30, 27, 40, 240)); gfx_ring(px - w / 2, py - 30, w, 60, 30, 1, WHITE_A(40)); gfx_circle(px - w / 2 + 34, py, 17, ACC2); icon_draw("check", px - w / 2 + 23, py - 11, 22, WHITE_A(255));
@@ -377,7 +377,7 @@ static void sc_hold(int st, float t) {
     push(2.5f, L, ORB_OK, 0.6f); push(3.85f, L, ORB_DONE, 0.9f);
     press(K_OK, T("OK"), vis(t, 2.2f, 3.1f, 0.2f), (t - 2.45f) / 0.35f, 560, PRESS_Y); return; }
   { float L = 6.0f; t = fmodf(t, L); float sel = 3 + glide(1.2f, t) - ease_apply(GLIDE_EASE, (t - 3.2f) / GLIDE_DUR) * 2 + glide(4.4f, t) * 2;
-    home(1, 1, 0, 0); topbar(1, -1, 0, 0, 0); menu(1, sel, 0); push(1.2f, L, ORB_DOWN, 0.3f); push(3.2f, L, ORB_UP, 0.4f); push(4.4f, L, ORB_DOWN, 0.4f); }
+    home(1, 1, 0, 0); topbar(0, -1, 0, 0, 0); menu(1, sel, 0); push(1.2f, L, ORB_DOWN, 0.3f); push(3.2f, L, ORB_UP, 0.4f); push(4.4f, L, ORB_DOWN, 0.4f); }
 }
 
 /* -- 3. the best stream: the title's page with the streams sheet as the app draws it (its header, its addon tabs, the
@@ -792,8 +792,8 @@ static void sc_news(float t) {
   static const int ART[3] = { 5, 1, 6 }; const float P = 6.0f; int n = (int)(t / P), a = ART[n % 3], b = ART[(n + 1) % 3]; float f = sstep(P - 1.2f, P, fmodf(t, P));
   backdrop(a, 0.35f); { float asp; GLuint t2 = art(b, 0, &asp); if (t2 && f > 0.001f) { gfx_image(t2, 0, 0, SB_W, SB_H, 0, WHITE_A((int)(255 * f)), 0, 0, 1, 1); sgT2 = t2; sgMix = f; } }
   gfx_rrect(0, 0, SB_W, SB_H, 0, BLACK_A(90)); sgDim = 90 / 255.0f; /* (a touch of the pages' dark: the words on the glass read) */
-  float pt = fmodf(t, 12.0f), pill = pt < 8.0f ? 1 + glide(5.0f, pt) : 2 - glide(9.0f, pt); /* calm: on Home, now and then over to Library and back */
-  topbar(1, pill, 0, 0, 0);
+  float pt = fmodf(t, 12.0f), pill = pt < 8.0f ? glide(5.0f, pt) : 1 - glide(9.0f, pt); /* calm: on Home, now and then over to Library and back */
+  topbar(0, pill, 0, 0, 0);
   if (!W.gh[0] || W.tour) return; /* (in the tour: the codes are the thanks page's, never twice) */
   float Q = 500, sw = support_w(Q), h = support_h(Q), pw = sw + 120, phh = h + 110, px = SB_W / 2 - pw / 2, py = 150 + (SB_H - 150) / 2 - phh / 2 + 14 * (1 - eo(0, 0.7f, t)), sel = W.tipK.v;
   wSoft = 0.4f; wglass(px, py, pw, phh, 56, 0.9f, 9); lglass_light(0); /* the sheet: the bar's glass, large, bending gently */
