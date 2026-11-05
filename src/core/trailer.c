@@ -13,7 +13,7 @@
 #define IMDB_GQL "https://api.graphql.imdb.com/"
 #define YT_VER "20.10.38"
 #define YT_UA "com.google.android.youtube/" YT_VER " (Linux; U; Android 14)"
-#define WEB_UA "Mozilla/5.0 (Web0S; Linux) StremioOrigin"
+#define WEB_UA "Mozilla/5.0 (Web0S; Linux) StremioVista"
 static const char *PIPED[] = { "https://api.piped.private.coffee", "https://pipedapi.kavin.rocks", "https://pipedapi.ducks.party",
                                "https://pipedapi.reallyaweso.me", "https://pipedapi.adminforge.de" };
 #define NPIPED 5

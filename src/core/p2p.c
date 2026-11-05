@@ -106,7 +106,7 @@ static long free_mb(const char *dir) { struct statvfs v; if (statvfs(dir, &v)) r
 /* the candidate folders (SB_P2P_FLASH / SB_P2P_TMP point them elsewhere for tests: a tiny disk image, a full folder) */
 static void flash_root(char *o, size_t n) { const char *e = getenv("SB_P2P_FLASH"); snprintf(o, n, "%s/engine", e ? e : store_data_dir()); }
 #ifndef SB_APP_ID
-#define SB_APP_ID "tv.stremioorigin.app"
+#define SB_APP_ID "tv.stremiovista.app"
 #endif
 static void usb_root(char *o, size_t n, const char *mnt) { snprintf(o, n, "%s/%s-engine", mnt, SB_APP_ID); }
 /* /tmp and /dev/shm are shared by every app on the TV: a folder per app, and per user when one of that name belongs

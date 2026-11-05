@@ -2,17 +2,17 @@
 # Builds the installable IPK of the native app into dist/ (tools/build.sh webos first when the binary is missing).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APPID="${APPID:-tv.stremioorigin.app}"; TITLE="${TITLE:-Stremio Origin}"   # APPID=tv.stremioorigin.app TITLE="Stremio Origin C" tools/package.sh: a second app beside the original
+APPID="${APPID:-tv.stremiovista.app}"; TITLE="${TITLE:-Stremio Vista}"   # APPID=tv.stremiovista.dev tools/package.sh: an additional development installation
 BIN="$ROOT/build/webos/stremioorigin"
 APPID="$APPID" "$ROOT/tools/build.sh" webos
 STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$STAGE/app/assets"
-sed -e "s/\"id\": \"tv.stremioorigin.app\"/\"id\": \"$APPID\"/" -e "s/\"title\": \"Stremio Origin\"/\"title\": \"$TITLE\"/" "$ROOT/pkg/appinfo.json" > "$STAGE/app/appinfo.json"
+sed -e "s/\"id\": \"tv.stremiovista.app\"/\"id\": \"$APPID\"/" -e "s/\"title\": \"Stremio Vista\"/\"title\": \"$TITLE\"/" "$ROOT/pkg/appinfo.json" > "$STAGE/app/appinfo.json"
 cp "$BIN" "$STAGE/app/stremioorigin"; chmod 755 "$STAGE/app/stremioorigin"
 if [ -f "$ROOT/build/webos/libsbengine.so" ]; then cp "$ROOT/build/webos/libsbengine.so" "$STAGE/app/"; else echo "note: no build/webos/libsbengine.so (tools/build-engine.sh webos): torrents will be unavailable"; fi
 if [ -f "$ROOT/build/webos/libsbdts.so" ]; then cp "$ROOT/build/webos/libsbdts.so" "$STAGE/app/"; else echo "note: no build/webos/libsbdts.so (tools/build-ffmpeg.sh webos): DTS-only files will play without sound"; fi
-cp "$ROOT"/assets/{icon.png,logo.png,splashicon.png,splashbg.jpg,cacert.pem,whatsnew.json} "$ROOT"/assets/icons*.json "$STAGE/app/assets/"
-cp "$ROOT"/pkg/icon.png "$ROOT"/pkg/largeIcon.png "$STAGE/app/"
+cp "$ROOT"/assets/{vista-icon.png,splashbg.jpg,cacert.pem,whatsnew.json} "$ROOT"/assets/icons*.json "$STAGE/app/assets/"
+cp "$ROOT"/pkg/vista-icon.png "$ROOT"/pkg/vista-largeIcon.png "$STAGE/app/"
 cp -R "$ROOT/assets/fonts" "$ROOT/assets/i18n" "$ROOT/assets/sounds" "$ROOT/assets/guide" "$STAGE/app/assets/"
 [ -d "$ROOT/third_party/licenses" ] && cp -R "$ROOT/third_party/licenses" "$STAGE/app/licenses" || true
 # nothing personal may travel in the package (build paths are not kept: the binary is stripped)

@@ -1,0 +1,6 @@
+Tool: built-in imagegen
+Reference: assets/logo.png
+Output: assets/vista-logo.png
+Variants: assets/vista-icon.png, pkg/vista-icon.png, pkg/vista-largeIcon.png
+
+Create a production-ready square launcher logo for Stremio Vista, matching the reference purple gradient circular play button emblem and its vertical layout. Purple circle with smooth clean edges, crisp white right-facing play triangle. Beneath it exact text VISTA in solid opaque white, bold clean sans-serif capitals widely spaced. Background is a flat, fully opaque uniform dark charcoal #0c0b11 across the entire square. Keep a generous margin around the emblem and text. Completely smooth vector-like graphic, no texture, no grain, no grunge, no decorative particles, no gradients except within the purple circle. All text white solid clean. Do not remove background. Text verbatim VISTA. Output a square PNG.

@@ -41,7 +41,7 @@ typedef struct { char title[96]; ItemList items; int col, wide, label, hidden, c
   CatalogDef def; int hasDef, skipAt, more, paging; double pageAt; } Row;
 #define NFEAT 8
 /* what the hero shows: put in while it is invisible, all together */
-typedef struct { char id[64], name[256], metaName[256], metaLine[96], desc[1024], logo[512]; int wait; unsigned sig; } HeroView;
+typedef struct { char id[64], name[256], metaName[256], metaLine[96], genres[200], desc[1024], logo[512]; int wait; unsigned sig; } HeroView;
 /* what the drawing measures in the view, made once per view (and language): wrap counts, the meta line */
 typedef struct { unsigned ver, lg; int spot, discName, discDesc, homeName; MetaParts mp; } HeroLay;
 typedef struct {
@@ -190,9 +190,18 @@ static void hero_view(Board *b, HeroView *v) {
   snprintf(v->name, sizeof v->name, "%s", L && L->name && L->name[0] ? L->name : it->name);
   snprintf(v->metaName, sizeof v->metaName, "%s", L && L->name && L->name[0] && !(L->logo && L->logo[0]) && strcmp(L->name, it->name) ? L->name : "");
   snprintf(v->metaLine, sizeof v->metaLine, "%s", it->metaLine);
+  /* Match the title page's first three genres, preferring the app's language. */
+  v->genres[0] = 0;
+  const cJSON *gs = cJSON_GetObjectItemCaseSensitive(sb_meta_cached(it->type, it->id), "genres");
+  int locGenres = L && L->ngenres > 0, ng = locGenres ? L->ngenres : cJSON_GetArraySize(gs), shown = 0;
+  for (int i = 0; i < ng && shown < 3; i++) {
+    const char *g = locGenres ? L->genres[i] : cJSON_GetStringValue(cJSON_GetArrayItem(gs, i));
+    if (!g || !*g) continue;
+    size_t n = strlen(v->genres); snprintf(v->genres + n, sizeof v->genres - n, "%s%s", shown ? T(", ") : "", T(g)); shown++;
+  }
   snprintf(v->desc, sizeof v->desc, "%s", L && L->overview && L->overview[0] ? L->overview : it->description);
-  unsigned h = 2166136261u; const char *parts[6] = { v->logo, v->wait ? "W" : "T", v->logo[0] ? "" : v->name, v->metaName, v->metaLine, v->desc };
-  for (int i = 0; i < 6; i++) { for (const char *p = parts[i]; *p; p++) h = (h ^ (unsigned char)*p) * 16777619u; h = (h ^ 0x1f) * 16777619u; }
+  unsigned h = 2166136261u; const char *parts[7] = { v->logo, v->wait ? "W" : "T", v->logo[0] ? "" : v->name, v->metaName, v->metaLine, v->genres, v->desc };
+  for (int i = 0; i < 7; i++) { for (const char *p = parts[i]; *p; p++) h = (h ^ (unsigned char)*p) * 16777619u; h = (h ^ 0x1f) * 16777619u; }
   v->sig = h;
 }
 /* the description's lines all rasterised, as each face draws it (the missing ones are asked for) */
@@ -275,7 +284,7 @@ static HeroLay *hero_lay(Board *b) {
   l->discName = text_wrap_count(v->name, 1500, 2, b->heroSpot ? 92 : 76, 800, -1.6f);
   l->discDesc = v->desc[0] ? text_wrap_count(v->desc, 1080, 2, DESC_PX, 400, 0) : 0;
   l->homeName = text_wrap_count(v->name, HERO_W, 2, 76, 800, -1.6f);
-  meta_prep(&l->mp, v->metaLine, NULL, v->metaName, META_PX);
+  meta_prep(&l->mp, v->metaLine, v->genres, v->metaName, META_PX);
   return l;
 }
 /* the spotlight's label, upper-cased once per language */

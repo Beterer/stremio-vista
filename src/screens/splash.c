@@ -15,7 +15,7 @@
 
 /* The start screen, quiet: on the page's own dark, the app's two glows drifting out from the middle to their corners
    as it fades in, and the mark: the circle settling from 0.96, then the play, then
-   ORIGIN as its letters close up, still until Home is complete; leaving, it grows a touch and fades. Drawn, no
+   VISTA as its letters close up, still until Home is complete; leaving, it grows a touch and fades. Drawn, no
    picture to load. */
 static int on, waitHome, gone; static float outS; static Orbs orbs; static double t0, cap, signedAt; static Timer1 out; 
 #define MIN_UP 0.9  /* the entrance has room to finish */
@@ -40,7 +40,7 @@ void splash_tick(float dt) {
   if (el < MIN_UP || (waitHome && el < cap && (!board_home_ready() || (signedAt > 0 && !welcome_ready())))) return; /* (signed in: the guide's pictures in too) */
   splash_end();
 }
-/* the mark, drawn (no tile): the circle in its violet, the rounded play in white, ORIGIN spaced out under it */
+/* the mark, drawn (no tile): the circle in its violet, the rounded play in white, VISTA spaced out under it */
 void splash_draw(void) {
   if (!on) return;
   float lv = gone ? ease_apply(EASE_CSS_EASE, timer_x(&out)) : 0, a = 1 - lv; gfx_opacity_push(a);
@@ -56,6 +56,6 @@ void splash_draw(void) {
   gfx_opacity_push(k); gfx_rrect_v(cx - R, cy - R, 2 * R, 2 * R, R, RGB(0x6a, 0x45, 0xe0), RGB(0x2f, 0x1a, 0x9e)); gfx_rrect_v(cx - R, cy - R, 2 * R, 2 * R, R, WHITE_A(26), WHITE_A(0)); /* (its light from the top, inside the circle) */ gfx_opacity_pop();
   { float S = 2 * R * 512 / 264.0f; gfx_opacity_push(kp); icon_draw("o_play", cx - S * 256 / 512 + 6 * (1 - kp), cy - S * 226 / 512, S, WHITE_A(255)); gfx_opacity_pop(); }
   gfx_scale_pop();
-  gfx_opacity_push(kt); text_draw("ORIGIN", cx + 10, cy + R + 56 + 8 * (1 - kt), 40, 700, WHITE_A(240), 20 - 6 * kt, 0, ALIGN_CENTER); gfx_opacity_pop();
+  gfx_opacity_push(kt); text_draw("VISTA", cx + 10, cy + R + 56 + 8 * (1 - kt), 40, 700, WHITE_A(240), 20 - 6 * kt, 0, ALIGN_CENTER); gfx_opacity_pop();
   gfx_opacity_pop();
 }

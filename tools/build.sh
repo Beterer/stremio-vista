@@ -1,8 +1,9 @@
 #!/bin/bash
-# Builds Stremio Origin (native) for one target:
+# Builds Stremio Vista (native) for one target:
 #   tools/build.sh mac            -> build/mac/stremioorigin        (the Mac preview, SDL2 + OpenGL 2.1)
 #   tools/build.sh webos          -> build/webos/stremioorigin      (LG webOS, ARMv7, SDL2 + GLES2)
 #   tools/build.sh mac --run      -> build and start it
+#   tools/build.sh linux --run    -> build/linux/stremioorigin     (Linux desktop UI preview)
 # Third-party code (FreeType, HarfBuzz, FriBidi, cJSON, stb) is compiled once per target into
 # build/<target>/tp/libtp.a and reused until `--clean-tp`.
 set -euo pipefail
@@ -22,6 +23,11 @@ case "$TARGET" in
     TFLAGS="-DSB_MAC=1 -I$MACSDL/include -I$MACSDL/include/SDL2"
     LIBS="$($MACSDL/bin/sdl2-config --static-libs) -Wl,-framework,OpenGL -lcurl -liconv -lz"
     PLAT=mac ;;
+  linux)
+    CC="cc"; CXX="c++"; AR="ar"; WEBPCC="cc"
+    TFLAGS="-DSB_LINUX=1 $(pkg-config --cflags sdl2)"
+    LIBS="$(pkg-config --libs sdl2 gl) -ldl -lpthread -lz -lm"
+    PLAT=linux ;;
   webos)
     CC="$ZIG cc -target arm-linux-gnueabi.2.12 -mcpu=cortex_a9 -mfloat-abi=softfp"
     WEBPCC="$ZIG cc -target arm-linux-gnueabi.2.12 -mcpu=cortex_a9-neon -mfloat-abi=softfp"   # libwebp's NEON paths break this compiler's backend: plain C there
@@ -35,7 +41,7 @@ esac
 OPT="-O2 -fno-strict-aliasing -ffunction-sections -fdata-sections"
 if [ -n "${SB_FP:-}" ]; then OPT="$OPT -fno-omit-frame-pointer -marm"; fi  # SB_FP=1: frame pointers for the profiler
 if [ -n "${SB_ASAN:-}" ]; then OPT="-O1 -g -fsanitize=address -fno-omit-frame-pointer"; B="$B-asan"; mkdir -p "$B/tp" "$B/obj"; fi  # SB_ASAN=1 tools/build.sh mac: a sanitizer build in build/mac-asan
-APPID="${APPID:-tv.stremioorigin.app}"
+APPID="${APPID:-tv.stremiovista.app}"
 CFLAGS="$OPT -std=c11 -D_GNU_SOURCE -DSB_APP_ID=\"$APPID\" -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers $TFLAGS -I$ROOT/src -I$TP/freetype/include -I$TP/harfbuzz/src -I$TP/fribidi/lib -I$TP/config/fribidi -I$TP/cjson -I$TP/stb -I$TP/qrcodegen -I$TP/webp -I$TP/crypto -I$TP/libass"
 
 # ---- built-in keys ------------------------------------------------------------------------
@@ -83,6 +89,22 @@ if [ ! -f "$B/tp/libtp.a" ]; then
   $AR rcs "$B/tp/libtp.a" "$B"/tp/*.o
 fi
 
+# x86-64 enables SSE2 dispatch by default. Keep its decoder implementations with
+# the generic WebP objects, including when upgrading an existing preview cache.
+if [ "$TARGET" = linux ]; then
+  SSE_OBJS=(); SSE_CHANGED=0
+  for f in "$TP"/webp/src/dsp/*_sse2.c; do
+    case "$(basename "$f")" in *enc*) continue;; esac
+    o="$B/tp/webp_$(basename "${f%.c}").o"
+    if [ ! -f "$o" ] || [ "$f" -nt "$o" ]; then
+      $WEBPCC -w $OPT -DWEBP_REDUCE_CSP -I$TP/webp -c "$f" -o "$o"
+      SSE_CHANGED=1
+    fi
+    SSE_OBJS+=("$o")
+  done
+  if [ "$SSE_CHANGED" = 1 ]; then $AR rcs "$B/tp/libtp.a" "${SSE_OBJS[@]}"; fi
+fi
+
 if [ ! -f "$B/tp/libass.a" ]; then   # libass (styled ASS / SSA subtitles) on the FreeType, HarfBuzz and FriBidi above, no system font provider
   echo "== libass ($TARGET)"; mkdir -p "$B/tp/ass"
   for f in "$TP"/libass/libass/*.c "$TP"/libass/libass/c/*.c; do
@@ -100,7 +122,9 @@ STAMP="$B/obj/.appid"; if [ "$(cat "$STAMP" 2>/dev/null)" != "$APPID" ]; then rm
 for f in "$TP"/crypto/*.c; do   # SHA-256, AES, GCM, PBKDF2 (log sharing): small, built beside the app rather than into libtp.a
   o="$B/tp/crypto_$(basename "${f%.c}").o"; if [ ! -f "$o" ] || [ "$f" -nt "$o" ]; then $CC -w $OPT -I$TP/crypto -c "$f" -o "$o"; fi; OBJS+=("$o")
 done
-for f in "$ROOT"/src/core/*.c "$ROOT"/src/ui/*.c "$ROOT"/src/screens/*.c "$ROOT"/src/platform/$PLAT/*.c "$ROOT"/src/main.c; do
+SOURCES=("$ROOT"/src/core/*.c "$ROOT"/src/ui/*.c "$ROOT"/src/screens/*.c "$ROOT"/src/platform/$PLAT/*.c "$ROOT"/src/main.c)
+if [ "$TARGET" = mac ] || [ "$TARGET" = linux ]; then SOURCES+=("$ROOT"/src/platform/preview/*.c); fi
+for f in "${SOURCES[@]}"; do
   [ -f "$f" ] || continue
   o="$B/obj/$(echo "${f#$ROOT/src/}" | tr / _).o"
   if [ ! -f "$o" ] || [ "$f" -nt "$o" ] || [ -n "$(find "$ROOT/src" -name '*.h' -newer "$o" | head -1)" ] || [ "$B/sbkeys.h" -nt "$o" ]; then
@@ -108,7 +132,7 @@ for f in "$ROOT"/src/core/*.c "$ROOT"/src/ui/*.c "$ROOT"/src/screens/*.c "$ROOT"
   fi
   OBJS+=("$o")
 done
-if [ "$TARGET" = mac ]; then
+if [ "$TARGET" != webos ]; then
   $CXX $OPT -o "$B/stremioorigin" "${OBJS[@]}" "$B/tp/libass.a" "$B/tp/libtp.a" $LIBS
 else
   $CXX $OPT -Wl,--gc-sections -o "$B/stremioorigin.dbg" "${OBJS[@]}" "$B/tp/libass.a" "$B/tp/libtp.a" $LIBS   # symbols kept: crash addresses resolve against it
@@ -117,5 +141,5 @@ else
   if [ -n "$BID" ]; then mkdir -p "$ROOT/dist/dbg/builds"; cp "$B/stremioorigin.dbg" "$ROOT/dist/dbg/builds/$BID.dbg"; ls -t "$ROOT"/dist/dbg/builds/*.dbg | tail -n +41 | xargs rm -f; fi
 fi
 ls -l "$B/stremioorigin" | awk '{printf "%s  %.1f MB\n", $NF, $5/1048576}'
-[ $RUN = 1 ] && [ "$TARGET" = mac ] && exec "$B/stremioorigin" "$ROOT/assets"
+[ $RUN = 1 ] && [ "$TARGET" != webos ] && exec "$B/stremioorigin" "$ROOT/assets"
 exit 0
