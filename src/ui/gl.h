@@ -6,6 +6,10 @@
 #  define GL_SILENCE_DEPRECATION 1
 #  include <OpenGL/gl.h>
 #  define SB_GLSL_PRECISION ""
+#elif defined(SB_LINUX)
+#  define GL_GLEXT_PROTOTYPES 1
+#  include <SDL2/SDL_opengl.h>
+#  define SB_GLSL_PRECISION ""
 #else
 #  include <GLES2/gl2.h>
 #  define SB_GLSL_PRECISION "precision mediump float;\n"

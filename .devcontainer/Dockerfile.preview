@@ -1,0 +1,14 @@
+FROM webos-dev:local
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsdl2-dev libgl1-mesa-dev libgl1-mesa-dri libcurl4-openssl-dev \
+    xvfb x11vnc novnc websockify x11-utils xdotool \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy \
+    SB_SHOW=1 SB_WINDOW=1280x720 SB_DATA_DIR=/data LANG=C.UTF-8
+
+EXPOSE 6080
+HEALTHCHECK --interval=2s --timeout=2s --start-period=10m --retries=3 \
+    CMD curl -fsS http://127.0.0.1:6080/vnc.html >/dev/null && grep -q '^\[frame\] 1 drawn' /tmp/vista-preview.log
+CMD ["bash", "tools/preview-container.sh"]

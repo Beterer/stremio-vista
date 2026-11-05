@@ -25,7 +25,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #ifndef SB_APP_ID
-#define SB_APP_ID "tv.stremioorigin.app"
+#define SB_APP_ID "tv.stremiovista.app"
 #endif
 
 #define APPLOG_MAX (400 * 1024)
@@ -182,7 +182,7 @@ static long proc_kb(const char *file, const char *key) {
 }
 char *applog_bundle(void) {
   Buf b = { 0 }; char ts[32], l[512]; iso_now(ts);
-  snprintf(l, sizeof l, "Stremio Origin logs - %s\n", ts); b_add(&b, l);
+  snprintf(l, sizeof l, "Stremio Vista logs - %s\n", ts); b_add(&b, l);
   snprintf(l, sizeof l, "app %s %s (build %.12s)", SB_APP_ID, update_current(), buildId + 10); b_add(&b, l);
   char *os = read_file("/var/run/nyx/os_info.json", 8192), *di = read_file("/var/run/nyx/device_info.json", 8192);
   if (os) { char r[64], c[64], n[64], bid[64]; json_str(os, "webos_release", r, sizeof r); json_str(os, "core_os_release", c, sizeof c); json_str(os, "webos_name", n, sizeof n); json_str(os, "webos_build_id", bid, sizeof bid);
@@ -262,7 +262,7 @@ static void *share_job(void *arg) {
   unsigned char pub[65]; char *page = logseal_unb64(LS_PUB, pub, sizeof pub) == 65 ? logseal_seal(SH.code, pub, t, strlen(t)) : NULL; free(t);
   if (!page) { share_set(-1, "seal"); return NULL; }
   pthread_mutex_lock(&mu); SH.page = page; pthread_mutex_unlock(&mu);
-  Buf f = { 0 }; form_add(&f, "short_name", "Origin"); api_post("createAccount", f.p, on_account); free(f.p);
+  Buf f = { 0 }; form_add(&f, "short_name", "Vista"); api_post("createAccount", f.p, on_account); free(f.p);
   return NULL;
 }
 int applog_share_start(void) {

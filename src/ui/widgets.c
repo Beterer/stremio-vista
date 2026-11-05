@@ -38,7 +38,7 @@ static void meta_parse(const char *ml, const char *genres, const char *name, Met
       if (*r == '-' || (unsigned char)r[0] == 0xe2) { const char *d = r; if ((unsigned char)*d == 0xe2) d += 3; else d++; while (*d == ' ') d++;
         p->year[i++] = '-'; if (isdigit((unsigned char)d[0]) && isdigit((unsigned char)d[1]) && isdigit((unsigned char)d[2]) && isdigit((unsigned char)d[3])) for (int k = 0; k < 4; k++) p->year[i++] = d[k]; }
       p->year[i] = 0; break; } }
-  int rt = sb_runtime_min(noImdb); if (rt) sb_fmt_runtime(rt, p->rt, sizeof p->rt);
+  int rt = sb_runtime_min(noImdb); if (rt) { char mn[16]; snprintf(mn, sizeof mn, "%d", rt); snprintf(p->rt, sizeof p->rt, "%s", T1("{m}min", "m", mn)); }
   if (!p->imdb[0] && !p->year[0] && !p->rt[0] && *ml) snprintf(p->rest, sizeof p->rest, "%s", ml);
   if (genres && *genres) snprintf(p->genres, sizeof p->genres, "%s", genres);
 }
@@ -48,13 +48,13 @@ static float meta_draw_at(const MetaParts *p, float x, float y, int px, uint32_t
   float lh = text_line_height(px);
   #define SEP() do { if (!first) { if (draw) gfx_circle(cx + 16 + 3, y + lh / 2 - 2, 3, WHITE_A(107)); cx += MDOT; } first = 0; } while (0)
   if (p->name[0]) { SEP(); float w = draw ? text_draw(p->name, cx, y, px, 800, WHITE_A(255), 0, 0, ALIGN_LEFT) : text_width(p->name, px, 800, 0); cx += w; }
+  if (p->rt[0]) { SEP(); float w = draw ? text_draw(p->rt, cx, y, px, 600, color, 0.2f, 0, ALIGN_LEFT) : text_width(p->rt, px, 600, 0.2f); cx += w; }
+  if (p->year[0]) { SEP(); float w = draw ? text_draw(p->year, cx, y, px, 600, color, 0.2f, 0, ALIGN_LEFT) : text_width(p->year, px, 600, 0.2f); cx += w; }
+  if (p->rest[0]) { SEP(); float w = draw ? text_draw(p->rest, cx, y, px, 600, color, 0.2f, 0, ALIGN_LEFT) : text_width(p->rest, px, 600, 0.2f); cx += w; }
+  if (p->genres[0]) { SEP(); float w = draw ? text_draw(p->genres, cx, y, px, 600, WHITE_A(179), 0.2f, 0, ALIGN_LEFT) : text_width(p->genres, px, 600, 0.2f); cx += w; }
   if (p->imdb[0]) { SEP(); float bw = text_width("IMDb", (int)badgePx, 800, -0.4f) + 14, bh = badgePx + 9;
     if (draw) { gfx_rrect(cx, y + lh / 2 - bh / 2 - 2, bw, bh, 5, RGB(0xf5, 0xc5, 0x18)); text_draw("IMDb", cx + 7, y + lh / 2 - bh / 2 - 2 + 4 - (text_line_height((int)badgePx) - badgePx) / 2, (int)badgePx, 800, RGB(0, 0, 0), -0.4f, 0, ALIGN_LEFT); }
     cx += bw + 10; float w = draw ? text_draw(p->imdb, cx, y, px, 700, WHITE_A(255), 0, 0, ALIGN_LEFT) : text_width(p->imdb, px, 700, 0); cx += w; }
-  if (p->year[0]) { SEP(); float w = draw ? text_draw(p->year, cx, y, px, 600, color, 0.2f, 0, ALIGN_LEFT) : text_width(p->year, px, 600, 0.2f); cx += w; }
-  if (p->rt[0]) { SEP(); float w = draw ? text_draw(p->rt, cx, y, px, 600, color, 0.2f, 0, ALIGN_LEFT) : text_width(p->rt, px, 600, 0.2f); cx += w; }
-  if (p->rest[0]) { SEP(); float w = draw ? text_draw(p->rest, cx, y, px, 600, color, 0.2f, 0, ALIGN_LEFT) : text_width(p->rest, px, 600, 0.2f); cx += w; }
-  if (p->genres[0]) { SEP(); float w = draw ? text_draw(p->genres, cx, y, px, 600, WHITE_A(179), 0.2f, 0, ALIGN_LEFT) : text_width(p->genres, px, 600, 0.2f); cx += w; }
   #undef SEP
   return cx - x;
 }

@@ -36,7 +36,7 @@
 #include <time.h>
 
 #ifndef SB_APP_ID
-#define SB_APP_ID "tv.stremioorigin.app"
+#define SB_APP_ID "tv.stremiovista.app"
 #endif
 
 typedef struct LSHandle LSHandle; typedef struct LSMessage LSMessage;

@@ -1,4 +1,4 @@
-/* The Mac preview has no TV pipeline: playback is simulated (a clock that runs) so the player's
+/* Desktop previews have no TV pipeline: playback is simulated (a clock that runs) so the player's
    screens can be worked on. For testing: a URL with "fail" in it errors 1.2 s after loading; SB_VID_SIZE=1920x1080
    sets the picture's size (1920x800 otherwise), SB_VID_DUR its length in seconds, SB_VID_START where the first load starts, SB_VID_SUBS=1 adds two subtitle
    tracks in the file. */

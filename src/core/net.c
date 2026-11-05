@@ -23,8 +23,8 @@ static struct curl_slist *(*f_slist_append)(struct curl_slist *, const char *);
 static void (*f_slist_free_all)(struct curl_slist *);
 static CURLcode (*f_global_init)(long);
 static char caPath[1024];
-/* "StremioOrigin/1.0.0 (webOS; native)": the running version, the platform it runs on */
-static const char *ua(void) { static char u[96]; if (!u[0]) { const char *d = plat_device_name(); snprintf(u, sizeof u, "StremioOrigin/%s (%s; native)", update_current(), strstr(d, "webOS") ? "webOS" : strstr(d, "Android") ? "Android TV" : "Mac"); } return u; }
+/* "StremioVista/1.0.0 (webOS; native)": the running version, the platform it runs on */
+static const char *ua(void) { static char u[96]; if (!u[0]) { const char *d = plat_device_name(); snprintf(u, sizeof u, "StremioVista/%s (%s; native)", update_current(), strstr(d, "webOS") ? "webOS" : strstr(d, "Android") ? "Android TV" : strstr(d, "Linux") ? "Linux" : "Mac"); } return u; }
 
 static int resolve(void) {
 #ifdef SB_MAC
@@ -305,7 +305,7 @@ int net_pipe_sync(const char *url, const char *headers, int head, NetHdrSink hs,
   f_easy_setopt(c, CURLOPT_XFERINFOFUNCTION, pipe_poll); f_easy_setopt(c, CURLOPT_XFERINFODATA, &x); f_easy_setopt(c, CURLOPT_NOPROGRESS, 0L);
   f_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L); f_easy_setopt(c, CURLOPT_MAXREDIRS, 8L); f_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
   f_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, 10000L); f_easy_setopt(c, CURLOPT_LOW_SPEED_LIMIT, 1L); f_easy_setopt(c, CURLOPT_LOW_SPEED_TIME, (long)(stallSec > 0 ? stallSec : 60));
-  f_easy_setopt(c, CURLOPT_USERAGENT, "Mozilla/5.0 (Web0S; Linux) StremioOrigin"); /* a User-Agent among the headers replaces it */
+  f_easy_setopt(c, CURLOPT_USERAGENT, "Mozilla/5.0 (Web0S; Linux) StremioVista"); /* a User-Agent among the headers replaces it */
   if (head) f_easy_setopt(c, CURLOPT_NOBODY, 1L);
   if (sl) f_easy_setopt(c, CURLOPT_HTTPHEADER, sl);
   if (caPath[0]) f_easy_setopt(c, CURLOPT_CAINFO, caPath);
@@ -350,7 +350,7 @@ int net_range_get(NetRange *h, const char *url, long long start, long len, unsig
   f_easy_setopt(c, CURLOPT_WRITEFUNCTION, range_data); f_easy_setopt(c, CURLOPT_WRITEDATA, &r);
   f_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L); f_easy_setopt(c, CURLOPT_MAXREDIRS, 5L); f_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
   f_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, 8000L); f_easy_setopt(c, CURLOPT_TIMEOUT_MS, (long)timeoutMs);
-  f_easy_setopt(c, CURLOPT_USERAGENT, "Mozilla/5.0 (Web0S; Linux) StremioOrigin"); f_easy_setopt(c, CURLOPT_TCP_KEEPALIVE, 1L);
+  f_easy_setopt(c, CURLOPT_USERAGENT, "Mozilla/5.0 (Web0S; Linux) StremioVista"); f_easy_setopt(c, CURLOPT_TCP_KEEPALIVE, 1L);
   if (caPath[0]) f_easy_setopt(c, CURLOPT_CAINFO, caPath);
   CURLcode rc = f_easy_perform(c);
   if (httpStatus) *httpStatus = r.status;

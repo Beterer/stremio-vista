@@ -1,10 +1,17 @@
 param(
-    [ValidateSet('setup', 'doctor', 'build', 'libraries', 'package', 'test', 'test-media', 'shell')]
-    [string]$Command = 'doctor'
+    [ValidateSet('setup', 'doctor', 'build', 'libraries', 'package', 'test', 'test-media', 'shell', 'preview', 'preview-stop')]
+    [string]$Command = 'doctor',
+    [switch]$Demo,
+    [switch]$NoOpen
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
+if ($Command -eq 'preview' -or $Command -eq 'preview-stop') {
+    $previewAction = if ($Command -eq 'preview-stop') { 'stop' } else { 'start' }
+    & (Join-Path $PSScriptRoot 'preview.ps1') -Action $previewAction -Demo:$Demo -NoOpen:$NoOpen
+    exit $LASTEXITCODE
+}
 $image = 'webos-dev:local'
 Get-Command docker -ErrorAction Stop | Out-Null
 & docker info --format '{{.OSType}}' | Out-Null

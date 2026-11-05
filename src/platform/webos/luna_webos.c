@@ -91,7 +91,7 @@ static int setup(void) {
   SYM(G, gCtxNew, "g_main_context_new"); SYM(G, gLoopNew, "g_main_loop_new"); SYM(G, gCtxIter, "g_main_context_iteration");
   /* the window's own registration (SDL) holds the app id: anonymous first (a rooted TV lets it call anything),
      then a media-client name, which the developer-mode role allows (for com.webos.media only) */
-  const char *app = getenv("APPID"); if (!app) app = "tv.stremioorigin.app"; const char *shortId = strrchr(app, '.') ? strrchr(app, '.') + 1 : app;
+  const char *app = getenv("APPID"); if (!app) app = "tv.stremiovista.app"; const char *shortId = strrchr(app, '.') ? strrchr(app, '.') + 1 : app;
   char name[160]; snprintf(name, sizeof name, "com.webos.media.client.%s.sys%d", shortId, (int)getpid());
   const char *tries[2] = { NULL, name }; LSErr e; memset(&e, 0, sizeof e);
   for (int i = 0; i < 2 && !bus; i++) { err_reset(&e); LSHandle *h = NULL;

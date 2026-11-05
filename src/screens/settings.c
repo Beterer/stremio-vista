@@ -620,11 +620,11 @@ static void wn_act(int a, int b) { (void)a; (void)b; welcome_show_whatsnew(); }
 static void preview_about(float x, float y, float w) {
   int rtl = app_rtl(), al = rtl ? ALIGN_RIGHT : ALIGN_LEFT; float h = about_h(); const char *av = update_avail(); int st = update_state();
   gfx_rrect(x, y, w, h, 18, RGB(0x1c, 0x1a, 0x24));
-  static char icon[1100]; if (!icon[0]) snprintf(icon, sizeof icon, "file://%s/icon.png", plat_asset_dir());
+  static char icon[1100]; if (!icon[0]) snprintf(icon, sizeof icon, "file://%s/vista-icon.png", plat_asset_dir());
   float ix = rtl ? x + w - 30 - AB_ICO : x + 30, asp; GLuint t = img_get(icon, 256, 256, &asp); if (t) gfx_image(t, ix, y + 28 + (about_hd() - AB_ICO) / 2, AB_ICO, AB_ICO, 0, WHITE_A(255), 0, 0, 1, 1);
   const char *stt = av ? T1("Version {v} is available", "v", av) : st == UPD_CHECKING ? T("Checking for updates…") : st == UPD_ERROR ? T("Could not check for updates") : T("Up to date");
   float sh = 16 + text_line_height(26), bh = text_line_height(46) + 4 + text_line_height(28) + 14 + sh, hd = about_hd(), ty = y + 28 + hd / 2 - bh / 2, tx = rtl ? ix - 30 : ix + AB_ICO + 30;
-  text_draw("Stremio Origin", tx, ty, 46, 800, WHITE_A(255), -0.8f, 0, al); ty += text_line_height(46) + 4;
+  text_draw("Stremio Vista", tx, ty, 46, 800, WHITE_A(255), -0.8f, 0, al); ty += text_line_height(46) + 4;
   text_draw(T1("Version {v}", "v", update_current()[0] ? update_current() : "…"), tx, ty, 28, 500, WHITE_A(200), 0, 0, al); ty += text_line_height(28) + 14;
   float sw = 40 + text_width(stt, 26, 700, 0), sx = rtl ? tx - sw : tx; gfx_rrect(sx, ty, sw, sh, sh / 2, av ? ACC : WHITE_A(24)); text_draw(stt, sx + 20, ty + sh / 2 - text_line_height(26) / 2.0f, 26, 700, av ? ACC_FG : WHITE_A(230), 0, 0, ALIGN_LEFT);
   { const char *wl = T("What\xe2\x80\x99s new"); float ww = 40 + 26 + 10 + text_width(wl, 26, 700, 0), wx = rtl ? sx - 14 - ww : sx + sw + 14; int f = wnBtn; /* the version's page again */

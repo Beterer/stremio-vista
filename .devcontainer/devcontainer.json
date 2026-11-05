@@ -1,5 +1,5 @@
 {
-  "name": "webOS native development",
+  "name": "Stremio Vista development",
   "build": { "dockerfile": "Dockerfile" },
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "workspaceFolder": "/workspace",

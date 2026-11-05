@@ -24,11 +24,10 @@
 #include <time.h>
 #include <unistd.h>
 #ifndef SB_APP_ID
-#define SB_APP_ID "tv.stremioorigin.app"
+#define SB_APP_ID "tv.stremiovista.app"
 #endif
 
-#define UPD_GH "https://api.github.com/repos/stremio-origin/webos/releases?per_page=8"
-#define UPD_MAN "https://stremio-origin.github.io/webos/api/apps/" SB_APP_ID "/manifest.json"
+#define UPD_GH "https://api.github.com/repos/Beterer/stremio-vista/releases?per_page=8"
 typedef struct { char ver[24], url[512], sha[72]; char notes[5][256]; int nnotes; } Rel;
 static struct {
   char cur[24], appinfo[1200]; int read; Rel avail; int has, state; char msg[240]; unsigned serial;
@@ -155,7 +154,12 @@ static void on_releases(int st, const unsigned char *body, size_t len, void *ud)
     }
   }
   cJSON_Delete(list);
-  if (has) done(&best, manual); else { const char *mf = getenv("SB_UPD_MAN"); net_get_timeout(mf ? mf : UPD_MAN, 15000, on_manifest, ud); } /* (SB_UPD_MAN: development, another manifest) */
+  if (has) done(&best, manual);
+  else {
+    /* Forks can inherit upstream Homebrew packages: manifests require an explicit opt-in. */
+    const char *mf = getenv("SB_UPD_MAN");
+    if (mf && *mf) net_get_timeout(mf, 15000, on_manifest, ud); else done(NULL, manual);
+  }
 }
 void update_check(int manual) {
   read_current();

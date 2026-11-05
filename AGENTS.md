@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This native C TV app keeps playback, networking, account, and stream-selection logic in `src/core/`, screens in `src/screens/`, and rendering and widgets in `src/ui/`. Platform adapters live in `src/platform/webos/` and `src/platform/mac/`. Keep platform-specific APIs in those adapters.
+This native C TV app keeps playback, networking, account, and stream-selection logic in `src/core/`, screens in `src/screens/`, and rendering and widgets in `src/ui/`. Platform adapters live in `src/platform/webos/`, `mac/`, and `linux/`; desktop previews share `src/platform/preview/`. Keep platform-specific APIs in those adapters.
 
 `assets/` holds fonts, translations, artwork, and sounds. `pkg/` holds webOS package metadata. `tools/` contains build, packaging, and diagnostic scripts; `tests/` contains harnesses and fixtures. Vendored dependencies and licenses live in `third_party/`. Generated output belongs in ignored `build/` and `dist/` directories.
 
@@ -12,6 +12,7 @@ Run from the repository root in Bash. Scripts default to macOS tool paths; Windo
 
 - `bash tools/build.sh webos`: cross-compile the TV executable.
 - `bash tools/build.sh mac --run`: build and launch the Mac preview.
+- `powershell -File tools/dev.ps1 preview -Demo`: build and open the Windows browser UI preview; playback is simulated. See `docs/development.md` for profile and stop commands.
 - `bash tools/build-engine.sh webos`: build the torrent library.
 - `bash tools/build-ffmpeg.sh webos`: build audio-conversion and Dolby Vision support; requires Rust tooling.
 - `bash tools/package.sh`: rebuild and create an IPK; requires `ares-package`.
@@ -31,7 +32,7 @@ Run `bash tests/best/run.sh <web-app-dir>` for scoring comparisons; the external
 
 History uses short descriptive subjects, sometimes scoped, such as `README: Support`. Keep commits focused. PRs should explain behavior, validation, relevant issues, and screenshots for visual changes.
 
-Develop on `custom-player` and push to `origin` (`Beterer/webos`). Keep `main` aligned with `upstream/main`; merge relevant upstream updates into `custom-player`.
+Develop on `custom-player`; `origin` is `Beterer/stremio-vista` and `upstream` is `stremio-origin/webos`. Keep upstream integration separate from Vista changes. Never commit, push, or open a PR unless the user specifically asks for that action.
 
 ## Security & Configuration
 
