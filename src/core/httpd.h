@@ -1,4 +1,4 @@
-/* The phone pages: a tiny HTTP server on the TV's network address, port 8099, only while a screen has
+/* The phone pages: a tiny HTTP server on the TV's network address, ports 8099-8108, only while a screen has
    asked for it (15 min after the last ask it goes away). It serves only a few pages behind a random token:
    the search page (what is typed reaches the app), the TMDB key page and the Trakt id page. It runs on its own thread; everything here is for the main
    thread. */
@@ -8,12 +8,13 @@
 
 #define HTTPD_PORT 8099
 
-/* on (or kept on) for 15 more minutes; the pages take the app's current language. 0 = the port is taken */
+/* on (or kept on) for 15 more minutes; the pages take the app's current language. 0 = no listener available */
 int  httpd_start(void);
-/* the address to put in a QR: "http://<LAN IP>:8099/t/<token><suffix>" (suffix "", "/tmdb", "/trakt");
+/* the address to put in a QR: "http://<LAN IP>:<port>/t/<token><suffix>" (suffix "", "/tmdb", "/trakt");
+   desktop uses 127.0.0.1 to match its listener. Tries 8099 first, then up to 8108 for coexistence with Origin.
    0 (and "") when the TV has no network address. Starts the server. */
 int  httpd_url(const char *suffix, char *out, size_t cap);
-/* the address as shown under a code, the token hidden ("/t/••••") */
+/* the complete address shown under a code, usable for manual entry too */
 void httpd_url_shown(const char *url, char *out, size_t cap);
 /* text typed on the phone: the latest sequence number; when it is past `since`, the text (at most 80
    characters) is copied out */

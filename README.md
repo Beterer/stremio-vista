@@ -14,7 +14,7 @@ Stremio Vista is a custom fork of [Stremio Origin](https://github.com/stremio-or
 This repository contains Vista's development and releases.
 
 ## Features
-- Home with Continue Watching first, followed by discovery catalogs, plus Library and Search, with artwork, logos and trailers
+- Home with Continue Watching first, followed by all browsable catalogs from your enabled Stremio addons in account order, plus Library and Search
 - Browsing metadata on one row: duration in minutes, year, genres and IMDb rating
 - A setting to disable navigation click sounds
 - The best stream for your TV and connection, picked in one press

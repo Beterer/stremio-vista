@@ -26,7 +26,7 @@
 #define MAX_CONN 8
 
 static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
-static int alive, stopReq, nconn; static double deadline;
+static int alive, stopReq, nconn, serverPort = HTTPD_PORT; static double deadline;
 static char tok[17];
 static struct { int seq; char text[400]; } typed;
 static unsigned hits;
@@ -196,11 +196,27 @@ static void sock_opts(int fd) {
 static int listen_on(void) {
   int fd = socket(AF_INET, SOCK_STREAM, 0); if (fd < 0) return -1;
   int one = 1; setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one); fcntl(fd, F_SETFD, FD_CLOEXEC);
-  struct sockaddr_in a; memset(&a, 0, sizeof a); a.sin_family = AF_INET; a.sin_port = htons(HTTPD_PORT); a.sin_addr.s_addr = htonl(INADDR_ANY);
+  struct sockaddr_in a; memset(&a, 0, sizeof a); a.sin_family = AF_INET; a.sin_addr.s_addr = htonl(INADDR_ANY);
+  int firstPort = HTTPD_PORT, lastPort = HTTPD_PORT + 9;
 #if defined(SB_MAC) || defined(SB_LINUX)
   a.sin_addr.s_addr = htonl(INADDR_LOOPBACK); /* the preview: this machine only (an open port made macOS ask for network access at every new build) */
+  /* Docker publishes this port on Windows loopback only, but needs the container interface to accept it. */
+  const char *bindIp = getenv("SB_PHONE_BIND");
+  if (bindIp && *bindIp && inet_pton(AF_INET, bindIp, &a.sin_addr) != 1) { close(fd); errno = EINVAL; return -1; }
+  const char *portText = getenv("SB_PHONE_PORT");
+  if (portText && *portText) {
+    char *end; long port = strtol(portText, &end, 10);
+    if (*end || port < 1 || port > 65535) { close(fd); errno = EINVAL; return -1; }
+    firstPort = lastPort = (int)port; /* exactly the port published by the Windows launcher */
+  }
 #endif
-  if (bind(fd, (struct sockaddr *)&a, sizeof a) || listen(fd, 8)) { close(fd); return -1; }
+  /* Origin may still own 8099 in the background. Keep Vista's pages on their own free port. */
+  for (int port = firstPort; ; port++) {
+    a.sin_port = htons(port);
+    if (!bind(fd, (struct sockaddr *)&a, sizeof a)) { serverPort = port; break; }
+    if (errno != EADDRINUSE || port >= lastPort) { close(fd); return -1; }
+  }
+  if (listen(fd, 8)) { close(fd); return -1; }
   return fd;
 }
 static void *srv_main(void *arg) {
@@ -235,25 +251,43 @@ int httpd_start(void) {
   if (bad) { close(fd); pthread_mutex_lock(&mu); alive = 0; pthread_mutex_unlock(&mu); return 0; }
   return 1;
 }
-/* the first IPv4 address that is up and not the loopback (nor a self-assigned 169.254 one) */
+/* The desktop deliberately has no LAN listener. */
+#if !defined(SB_MAC) && !defined(SB_LINUX)
+/* Prefer the interface used for outbound traffic, without sending a packet. A TV can also expose
+   virtual interfaces; the first address returned by getifaddrs need not be its reachable LAN address. */
 static int lan_ip(char *out, size_t cap) {
   struct ifaddrs *ifs = NULL, *i; out[0] = 0; if (getifaddrs(&ifs)) return 0;
-  for (i = ifs; i && !out[0]; i = i->ifa_next) {
-    if (!i->ifa_addr || i->ifa_addr->sa_family != AF_INET || (i->ifa_flags & IFF_LOOPBACK) || !(i->ifa_flags & IFF_UP)) continue;
+  struct in_addr route = { 0 }; int fd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (fd >= 0) {
+    struct sockaddr_in a = { .sin_family = AF_INET, .sin_port = htons(53) }; inet_pton(AF_INET, "1.1.1.1", &a.sin_addr);
+    socklen_t n = sizeof a;
+    if (!connect(fd, (struct sockaddr *)&a, sizeof a) && !getsockname(fd, (struct sockaddr *)&a, &n)) route = a.sin_addr;
+    close(fd);
+  }
+  int best = 0;
+  for (i = ifs; i; i = i->ifa_next) {
+    if (!i->ifa_addr || i->ifa_addr->sa_family != AF_INET || (i->ifa_flags & (IFF_LOOPBACK | IFF_POINTOPOINT)) || !(i->ifa_flags & IFF_UP)) continue;
     struct in_addr a = ((struct sockaddr_in *)i->ifa_addr)->sin_addr; unsigned h = ntohl(a.s_addr);
     if ((h >> 16) == 0xa9fe || h == 0) continue;
-    inet_ntop(AF_INET, &a, out, (socklen_t)cap); }
+    int local = (h >> 24) == 10 || (h >> 20) == 0xac1 || (h >> 16) == 0xc0a8;
+    int rank = a.s_addr == route.s_addr ? 3 : local ? 2 : 1;
+    if (rank > best && inet_ntop(AF_INET, &a, out, (socklen_t)cap)) best = rank;
+  }
   freeifaddrs(ifs); return out[0] != 0;
 }
+#endif
 int httpd_url(const char *suffix, char *out, size_t cap) {
   char ip[64]; out[0] = 0;
-  if (!httpd_start() || !lan_ip(ip, sizeof ip)) return 0;
-  snprintf(out, cap, "http://%s:%d/t/%s%s", ip, HTTPD_PORT, tok, suffix ? suffix : ""); return 1;
+  if (!httpd_start()) return 0;
+#if defined(SB_MAC) || defined(SB_LINUX)
+  snprintf(ip, sizeof ip, "127.0.0.1"); /* match the desktop listener, including offline use */
+#else
+  if (!lan_ip(ip, sizeof ip)) return 0;
+#endif
+  snprintf(out, cap, "http://%s:%d/t/%s%s", ip, serverPort, tok, suffix ? suffix : ""); return 1;
 }
 void httpd_url_shown(const char *url, char *out, size_t cap) {
-  const char *t = strstr(url, "/t/"); if (!t) { snprintf(out, cap, "%s", url); return; }
-  const char *e = t + 3; while ((*e >= '0' && *e <= '9') || (*e >= 'a' && *e <= 'f')) e++;
-  snprintf(out, cap, "%.*s/t/\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2\xe2\x80\xa2%s", (int)(t - url), url, e);
+  snprintf(out, cap, "%s", url); /* a manually entered address must work just like scanning the code */
 }
 int httpd_typed(int since, char *out, size_t cap) {
   pthread_mutex_lock(&mu); int s = typed.seq; if (s > since && out && cap) snprintf(out, cap, "%s", typed.text); pthread_mutex_unlock(&mu); return s;

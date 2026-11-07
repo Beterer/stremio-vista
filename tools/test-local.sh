@@ -8,6 +8,7 @@ cargo test --manifest-path tools/dovi/Cargo.toml --locked
 bash tests/board/run.sh
 bash tests/update/run.sh
 bash tests/metadata/run.sh
+bash tests/phone/run.sh
 mkdir -p build
 cc -std=c11 -D_GNU_SOURCE -DSB_BEST_PURE -Wall -Wextra -Wno-unused-parameter -O1 -g \
   -Isrc -Ithird_party/cjson tests/best/best_test.c src/core/best.c third_party/cjson/cJSON.c -lm -o build/best_test

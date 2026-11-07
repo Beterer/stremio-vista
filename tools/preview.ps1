@@ -34,12 +34,27 @@ if ($LASTEXITCODE -ne 0) { throw 'Preview image build failed.' }
 
 $profile = if ($Demo) { 'stremio-vista-preview-demo' } else { 'stremio-vista-preview-data' }
 $demoFlag = if ($Demo) { '1' } else { '0' }
+$phonePort = $null
+foreach ($candidatePort in 8099..8108) {
+    if ($candidatePort -eq $Port) { continue }
+    $probe = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $candidatePort)
+    try {
+        $probe.Server.ExclusiveAddressUse = $true
+        $probe.Start()
+        $phonePort = $candidatePort
+        break
+    } catch [System.Net.Sockets.SocketException] {
+        # Try the next host port; a service on Windows is invisible inside Docker.
+    } finally { $probe.Stop() }
+}
+if (-not $phonePort) { throw 'No free key-page port from 8099 through 8108. Free one of these local ports and retry.' }
 & docker run --detach --init --name $container --shm-size 512m `
     --label "stremio-vista.workspace=$repoRoot" --publish "127.0.0.1:${Port}:6080" `
+    --publish "127.0.0.1:${phonePort}:${phonePort}" `
     --mount "type=bind,source=$repoRoot,target=/workspace" `
     --mount 'type=volume,source=webos-dev-cache,target=/opt/origin-build' `
     --mount "type=volume,source=$profile,target=/data" `
-    --env "SB_PREVIEW_DEMO=$demoFlag" $image | Out-Null
+    --env "SB_PREVIEW_DEMO=$demoFlag" --env "SB_PHONE_PORT=$phonePort" $image | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Could not start the preview. Check that port $Port is free." }
 
 Write-Host 'Building and starting the native UI preview (first build takes longer)...'

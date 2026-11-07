@@ -18,7 +18,8 @@ typedef struct { Item *items; int n; int total; /* total: the metas in the answe
 
 /* url: the first page as asked (also the cache's name); path: the address before the extra part, extra: what the
    first page is asked with (a required property's first option, or none), skip: the catalog takes "skip" (pages) */
-typedef struct { char title[96], type[16], url[512], key[48], path[512], extra[200]; int skip; } CatalogDef;
+#define SB_CATALOG_URL_MAX 16384 /* configured catalog addons can embed several KB of list settings */
+typedef struct { char title[96], type[16], url[SB_CATALOG_URL_MAX], key[48], path[SB_CATALOG_URL_MAX], extra[200]; int skip; } CatalogDef;
 
 int  sb_init(void);
 /* ---- account ---- */
@@ -40,6 +41,7 @@ int  sb_addon_on(const cJSON *addon);  /* not switched off on this TV ("adOn_<ke
 void sb_addon_key(const cJSON *addon, char *out, size_t cap);  /* its manifest id, or its URL */
 
 /* ---- catalogs ---- */
+/* Pass NULL for out to count all eligible rows before allocating their definitions. */
 int  sb_home_defs(CatalogDef *out, int max);
 int  sb_disc_defs(CatalogDef *out, int max);
 /* cached copy first (cb with cached=1), then the fresh one if it differs; the list is malloc'd for the callback owner */
