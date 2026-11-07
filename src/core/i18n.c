@@ -34,17 +34,11 @@ const char *i18n_tv_lang(void) {
   tvLang[0] = (char)(loc[0] | 32); tvLang[1] = (char)(loc[1] | 32); tvLang[2] = 0;
   return tvLang;
 }
-/* first run: the subtitle and audio languages follow the TV's language too (only while never chosen: a choice
-   made in Settings is never overridden) */
+/* First run: prefer English for subtitles and audio; keep any saved language choices. */
 static void first_run_defaults(void) {
   static int done; if (done) return; done = 1;
-  if (store_get("subsLang", NULL) && store_get("defaultAudioTrack", NULL)) return;
-  static const char *M[][2] = { { "en", "eng" }, { "ar", "ara" }, { "fr", "fre" }, { "es", "spa" }, { "de", "ger" }, { "it", "ita" }, { "pt", "por" }, { "ru", "rus" }, { "tr", "tur" }, { "pl", "pol" },
-    { "nl", "dut" }, { "sv", "swe" }, { "he", "heb" }, { "hi", "hin" }, { "ja", "jpn" }, { "ko", "kor" }, { "zh", "chi" } };
-  const char *tv = i18n_tv_lang(), *c = NULL; for (size_t i = 0; i < sizeof M / sizeof M[0]; i++) if (!strcmp(M[i][0], tv)) c = M[i][1];
-  if (!c) return;
-  if (!store_get("subsLang", NULL)) store_set("subsLang", c);
-  if (!store_get("defaultAudioTrack", NULL)) store_set("defaultAudioTrack", c);
+  if (!store_get("subsLang", NULL)) store_set("subsLang", "eng");
+  if (!store_get("defaultAudioTrack", NULL)) store_set("defaultAudioTrack", "eng");
 }
 static unsigned langGen = 1;
 unsigned i18n_gen(void) { return langGen; }

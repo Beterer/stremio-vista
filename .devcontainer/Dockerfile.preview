@@ -6,9 +6,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ENV DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy \
-    SB_SHOW=1 SB_WINDOW=1280x720 SB_DATA_DIR=/data LANG=C.UTF-8
+    SB_SHOW=1 SB_WINDOW=1280x720 SB_DATA_DIR=/data SB_PHONE_BIND=0.0.0.0 LANG=C.UTF-8
 
-EXPOSE 6080
+EXPOSE 6080 8099-8108
 HEALTHCHECK --interval=2s --timeout=2s --start-period=10m --retries=3 \
     CMD curl -fsS http://127.0.0.1:6080/vnc.html >/dev/null && grep -q '^\[frame\] 1 drawn' /tmp/vista-preview.log
 CMD ["bash", "tools/preview-container.sh"]

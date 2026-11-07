@@ -110,14 +110,15 @@ static void def_set(CatalogDef *d, const char *title, const char *type, const ch
 }
 /* every installed catalog a board can show, in addon order (as the official board): one asked with nothing chosen,
    or with the first option of each required property (Cinemeta's "year" with this year); never one that needs a
-   search or a list of ids. from: how many to pass over first */
-static int board_defs(CatalogDef *out, int max, int from) {
-  int n = 0, seen = 0; cJSON *a = sb_addons(); const cJSON *ad; if (!a) return 0; int ai = 0;
-  cJSON_ArrayForEach(ad, a) { if (!sb_addon_on(ad)) { ai++; continue; } const cJSON *cats = js_arr(js_obj(ad, "manifest"), "catalogs"), *cat; char base[512]; addon_base(ad, base, sizeof base); int ci = 0;
+   search or a list of ids. NULL counts rows without storing them. */
+static int board_defs(CatalogDef *out, int max) {
+  int n = 0; cJSON *a = sb_addons(); const cJSON *ad; if (!a) return 0; int ai = 0;
+  cJSON_ArrayForEach(ad, a) { if (!sb_addon_on(ad)) { ai++; continue; } const cJSON *cats = js_arr(js_obj(ad, "manifest"), "catalogs"), *cat; char base[SB_CATALOG_URL_MAX]; addon_base(ad, base, sizeof base); int ci = 0;
     if (cats) cJSON_ArrayForEach(cat, cats) {
       const char *ctype = js_str(cat, "type", NULL), *cid = js_str(cat, "id", NULL); char ex[200];
-      if (ctype && cid && *ctype && *cid && addon_cat_default_extra(cat, ex, sizeof ex) == 0 && seen++ >= from && n < max) {
-        CatalogDef *d = &out[n++]; const char *nm = js_str(cat, "name", ""); char title[96], key[48], path[512], te[96], ie[300];
+      if (ctype && cid && *ctype && *cid && addon_cat_default_extra(cat, ex, sizeof ex) == 0 && (!out || n < max)) {
+        if (!out) { n++; ci++; continue; }
+        CatalogDef *d = &out[n++]; const char *nm = js_str(cat, "name", ""); char title[96], key[48], path[SB_CATALOG_URL_MAX], te[96], ie[300];
         snprintf(title, sizeof title, "%s%s%s", nm, *nm ? " · " : "", type_label(ctype)); snprintf(key, sizeof key, "a%d_%d", ai, ci);
         addon_urlenc(ctype, te, sizeof te); addon_urlenc(cid, ie, sizeof ie); snprintf(path, sizeof path, "%s/catalog/%s/%s", base, te, ie);
         def_set(d, title, ctype, path, ex, addon_cat_extra(cat, "skip", NULL, NULL, NULL), key); }
@@ -125,26 +126,19 @@ static int board_defs(CatalogDef *out, int max, int from) {
     ai++; }
   return n;
 }
-#define HOME_ROWS 8
 int sb_home_defs(CatalogDef *out, int max) {
-  int n = board_defs(out, max < HOME_ROWS ? max : HOME_ROWS, 0);
+  int n = board_defs(out, max);
   if (!n) {
+    if (!out) return 4;
     const char *defs[4][4] = { { "Popular · Movies", "movie", CINEMETA "/catalog/movie/top", "cin_m_top" }, { "Popular · Series", "series", CINEMETA "/catalog/series/top", "cin_s_top" },
       { "Top Rated · Movies", "movie", CINEMETA "/catalog/movie/imdbRating", "cin_m_ir" }, { "Top Rated · Series", "series", CINEMETA "/catalog/series/imdbRating", "cin_s_ir" } };
     for (int i = 0; i < 4 && n < max; i++) def_set(&out[n++], defs[i][0], defs[i][1], defs[i][2], NULL, 1, defs[i][3]);
   }
   return n;
 }
-/* Discover: Cinemeta's trending and top rated, its genres (the ones its manifest offers), then the installed catalogs
-   Home has no room for */
+/* Home and Discover share the complete account collection, without the former eight-row split. */
 int sb_disc_defs(CatalogDef *out, int max) {
-  const char *defs[3][4] = { { "Trending · Movies", "movie", CINEMETA "/catalog/movie/top", "d_m_top" }, { "Trending · Series", "series", CINEMETA "/catalog/series/top", "d_s_top" }, { "Top Rated · Movies", "movie", CINEMETA "/catalog/movie/imdbRating", "d_m_ir" } };
-  const char *genres[5] = { "Action", "Comedy", "Sci-Fi", "Drama", "Horror" };
-  int n = 0;
-  for (int i = 0; i < 3 && n < max; i++) def_set(&out[n++], defs[i][0], defs[i][1], defs[i][2], NULL, 1, defs[i][3]);
-  for (int i = 0; i < 5 && n < max; i++) { char ex[64] = "", key[16]; addon_extra_add(ex, sizeof ex, "genre", genres[i]); snprintf(key, sizeof key, "d_g_%d", i); def_set(&out[n++], genres[i], "movie", CINEMETA "/catalog/movie/top", ex, 1, key); }
-  if (n < max) n += board_defs(out + n, max - n, HOME_ROWS);
-  return n;
+  return sb_home_defs(out, max);
 }
 void sb_meta_line(const cJSON *m, char *out, size_t cap) {
   const char *rel = js_str(m, "releaseInfo", NULL); char yr[32] = ""; if (rel) copy_str(yr, sizeof yr, rel); else { double y = js_num(m, "year", 0); if (y) snprintf(yr, sizeof yr, "%d", (int)y); else copy_str(yr, sizeof yr, js_str(m, "year", "")); }
@@ -166,7 +160,7 @@ static ItemList *list_from_metas(const cJSON *metas, const char *type, int max) 
   const cJSON *m; cJSON_ArrayForEach(m, metas) { if (l->n >= n) break; sb_fill_item(&l->items[l->n], m, type); if (l->items[l->n].id[0]) l->n++; }
   return l;
 }
-typedef struct { char url[512], type[16], key[600]; int n; /* key: "cat:" + the whole address (cut short, every catalog of one addon shared one file) */ void (*cb)(ItemList *, int, void *); void *ud; char *cachedJson; } CatReq;
+typedef struct { char url[SB_CATALOG_URL_MAX], type[16], key[SB_CATALOG_URL_MAX + 8]; int n; void (*cb)(ItemList *, int, void *); void *ud; char *cachedJson; } CatReq;
 static void on_catalog(int st, const unsigned char *b, size_t len, void *ud) {
   CatReq *r = ud; Uint32 tq0 = SDL_GetTicks(); cJSON *j = st == 200 ? net_json(b) : NULL; const cJSON *metas = js_arr(j, "metas");
   if (metas && cJSON_GetArraySize(metas)) {
@@ -179,7 +173,7 @@ static void on_catalog(int st, const unsigned char *b, size_t len, void *ud) {
     int same = r->cachedJson && !strcmp(r->cachedJson, txt);
     char cp[1200]; int fresh = r->cachedJson && cache_file(r->key, 43200, cp, sizeof cp);
     if (!fresh) cache_write(r->key, (unsigned char *)txt, strlen(txt));
-    { AddonCache h; addon_cache_hints(j, &h); char hk[620], v[24]; snprintf(hk, sizeof hk, "cah:%s", r->url); int k = snprintf(v, sizeof v, "%ld", h.maxAge > 0 ? h.maxAge : 0); cache_write(hk, (unsigned char *)v, (size_t)k); } /* how long the addon says it holds */
+    { AddonCache h; addon_cache_hints(j, &h); char hk[SB_CATALOG_URL_MAX + 8], v[24]; snprintf(hk, sizeof hk, "cah:%s", r->url); int k = snprintf(v, sizeof v, "%ld", h.maxAge > 0 ? h.maxAge : 0); cache_write(hk, (unsigned char *)v, (size_t)k); } /* how long the addon says it holds */
     Uint32 tq2 = SDL_GetTicks(); if (!same && !fresh) r->cb(l, 0, r->ud); else itemlist_free(l);
     if (getenv("SB_SLOWLOG")) fprintf(stderr, "[cat] %d metas, %d kept: list %u ms, slim %u ms, page %u ms (%s)\n", cJSON_GetArraySize(metas), r->n, tq1 - tq0, tq2 - tq1, SDL_GetTicks() - tq2, same ? "same" : fresh ? "fresh copy shown" : "new");
     free(txt);
@@ -191,7 +185,7 @@ void sb_catalog_url(const char *url, const char *type, int n, void (*cb)(ItemLis
   size_t cl; unsigned char *t = cache_read(r->key, 0, &cl);
   if (t) { cJSON *c = cJSON_Parse((const char *)t); if (cJSON_IsArray(c) && cJSON_GetArraySize(c)) { r->cachedJson = (char *)t; cb(list_from_metas(c, type, n), 1, ud); } else free(t); cJSON_Delete(c); }
   /* the addon's own cacheMaxAge: a copy younger than that is the answer (no request) */
-  if (r->cachedJson) { char hk[620], cp[1200]; snprintf(hk, sizeof hk, "cah:%s", url); size_t hl; unsigned char *h = cache_read(hk, 0, &hl); long age = h ? atol((const char *)h) : 0; free(h);
+  if (r->cachedJson) { char hk[SB_CATALOG_URL_MAX + 8], cp[1200]; snprintf(hk, sizeof hk, "cah:%s", url); size_t hl; unsigned char *h = cache_read(hk, 0, &hl); long age = h ? atol((const char *)h) : 0; free(h);
     if (age > 0 && cache_file(r->key, age, cp, sizeof cp)) { free(r->cachedJson); free(r); return; } }
   net_get(url, on_catalog, r);
 }
@@ -206,17 +200,17 @@ static void on_page(int st, const unsigned char *b, size_t len, void *ud) {
   net_json_free(j); free(r);
 }
 void sb_catalog_page(const CatalogDef *d, int skip, void (*cb)(ItemList *, int, void *), void *ud) {
-  char ex[260], sk[16], url[800]; copy_str(ex, sizeof ex, d->extra); snprintf(sk, sizeof sk, "%d", skip); addon_extra_add(ex, sizeof ex, "skip", sk);
+  char ex[260], sk[16], url[SB_CATALOG_URL_MAX]; copy_str(ex, sizeof ex, d->extra); snprintf(sk, sizeof sk, "%d", skip); addon_extra_add(ex, sizeof ex, "skip", sk);
   snprintf(url, sizeof url, "%s/%s.json", d->path, ex);
   PageReq *r = calloc(1, sizeof *r); copy_str(r->type, sizeof r->type, d->type); r->cb = cb; r->ud = ud; net_get(url, on_page, r);
 }
 /* every catalog that takes a search (and needs nothing else), in addon order */
 int sb_search_defs(const char *q, CatalogDef *out, int max) {
   int n = 0; cJSON *a = sb_addons(); const cJSON *ad; if (!a) return 0; static const char *const SN[1] = { "search" };
-  cJSON_ArrayForEach(ad, a) { if (!sb_addon_on(ad)) continue; const cJSON *cats = js_arr(js_obj(ad, "manifest"), "catalogs"), *cat; char base[512]; addon_base(ad, base, sizeof base);
+  cJSON_ArrayForEach(ad, a) { if (!sb_addon_on(ad)) continue; const cJSON *cats = js_arr(js_obj(ad, "manifest"), "catalogs"), *cat; char base[SB_CATALOG_URL_MAX]; addon_base(ad, base, sizeof base);
     if (cats) cJSON_ArrayForEach(cat, cats) { const char *ctype = js_str(cat, "type", NULL), *cid = js_str(cat, "id", NULL);
       if (!ctype || !cid || !addon_cat_accepts(cat, SN, 1) || n >= max) continue;
-      char path[512], te[96], ie[300], ex[300] = ""; addon_urlenc(ctype, te, sizeof te); addon_urlenc(cid, ie, sizeof ie); snprintf(path, sizeof path, "%s/catalog/%s/%s", base, te, ie);
+      char path[SB_CATALOG_URL_MAX], te[96], ie[300], ex[300] = ""; addon_urlenc(ctype, te, sizeof te); addon_urlenc(cid, ie, sizeof ie); snprintf(path, sizeof path, "%s/catalog/%s/%s", base, te, ie);
       addon_extra_add(ex, sizeof ex, "search", q); def_set(&out[n++], js_str(cat, "name", ""), ctype, path, ex, 0, ""); } }
   return n;
 }

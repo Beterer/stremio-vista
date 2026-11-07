@@ -64,6 +64,12 @@ excluded from Git. Restart the command after source changes to rebuild. Stop wit
 start without opening a browser, or `tools/preview.ps1 -Port 6081` for another port.
 Startup problems can be inspected with `docker logs stremio-vista-preview`.
 
+Settings > Keys serves TMDB and Trakt forms at the full `http://127.0.0.1:8099/...`
+address shown by the preview (or the next free port through 8108). Open it in a
+browser on Windows; scanning a loopback address on a phone cannot reach Windows.
+The launcher chooses one available port and publishes it on Windows loopback only. No keys are built in
+or shared with the TV. `bash tests/phone/run.sh` checks both key pages and port conflicts.
+
 With the preview running, `docker exec stremio-vista-preview bash tests/preview/run.sh`
 checks desktop controls, lifecycle, window sizing, and settings persistence.
 On Linux with SDL2/OpenGL development packages installed, use
@@ -85,8 +91,12 @@ uninstalling either app when applying an update.
 To create an additional development installation, set
 `$env:APPID = 'tv.stremiovista.dev'` before building and packaging.
 
-For phone casting or QR pages, fully exit the other app first: the original and
-Vista currently use the same local TCP ports for those optional services.
+For phone casting, fully exit the other app first: both use the same casting port.
+Vista's QR pages use the next free port from 8099 through 8108 when Origin is
+already serving a phone page. Scan the current code while Vista is open, using a
+phone on the TV's network; mobile data and isolated guest Wi-Fi cannot reach it.
+The complete address beneath the QR code also works from a computer on that
+network. Use `http://` and include the port, token and provider path exactly.
 
 Update checks target Vista's GitHub releases. The fork's existing `gh-pages` branch
 contains inherited Origin packages, not Vista releases; the app does not use that
@@ -116,9 +126,11 @@ uses the `linux` target; the existing `mac` target requires macOS and SDL2.
 
 `test` exercises log sealing/scrubbing, the Dolby Vision Rust unit tests, and all
 scoring fixtures across four TV capability profiles and five connection speeds.
-The board harness checks Continue Watching followed by discovery catalogs, empty
-history, stale catalog replies, and the Home/Library navigation layout in both
-text directions. It runs the production row/layout code with network and rendering
+The board harness checks Continue Watching followed by all enabled addon catalogs,
+100-row collections, loading ahead and behind focus, deep refresh, stale replies,
+and the Home/Library navigation layout in both text directions. Catalog tests cover
+account order, long configured URLs, distinct cache keys, pagination, search and
+the movie/series fallback when no installed catalog can be browsed. It runs production code with network and rendering
 dependencies stubbed in the configured Linux image using the SDK headers; TV
 navigation and appearance still need device verification.
 The update harness checks fork-only release lookup, empty releases, network

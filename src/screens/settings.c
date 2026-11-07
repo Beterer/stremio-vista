@@ -172,10 +172,10 @@ static void build(void) {
   set_s(&subsS[3], "subsOutlineColor", "Outline", "", OUTL, 2, "#000000");
   set_s(&subsS[4], "subsBgStyle", "Background", "", BGS, 3, "0");
   set_s(&subsS[5], "subsAssStyle", "Styled subtitles", "Signs, fonts and effects as the film\xe2\x80\x99s own ASS / SSA subtitles draw them", ASSO, 2, "styled");
-  set_s(&audS[0], "enableDefaultAudioTrack", "Auto audio track", "Pick the audio language below when a film has several", OO, 2, "false");
+  set_s(&audS[0], "enableDefaultAudioTrack", "Auto audio track", "Pick the audio language below when a film has several", OO, 2, "true");
   set_s(&audS[1], "defaultAudioTrack", "Default audio language", "", LANG_OPTS + 1, 17, "eng");
   set_s(&audS[2], "dtsMode", "DTS sound", "Auto finds out what this TV plays. Convert if you are not sure. Off leaves it to the TV", DTSM, 3, "auto");
-  set_s(&audS[3], "uiSound", "Interface sounds", "A soft click as you move between titles", OO, 2, "true");
+  set_s(&audS[3], "uiSound", "Interface sounds", "A soft click as you move between titles", OO, 2, "false");
   set_s(&audS[4], "uiSoundVol", "Interface sound level", "Of the TV\xe2\x80\x99s volume", SVOL, 10, "30");
   set_s(&lookS[0], "accent", "Accent colour", "Dynamic: the colours of the title you open", ACCENT_OPTS, 20, "logo"); /* first, right under its picture */
   set_s(&lookS[1], "ssDelay", "Screensaver", "After a while without a key, the titles of the moment fill the screen", SS_OPTS, 5, "5");

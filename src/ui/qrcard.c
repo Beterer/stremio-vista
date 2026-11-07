@@ -88,7 +88,8 @@ void qrcard_show(const QrCardOpts *o) {
   if (Q.open) finish(); /* one card at a time: the one there is replaced */
   memset(&Q, 0, sizeof Q); Q.o = *o; Q.open = 1;
   snprintf(Q.title, sizeof Q.title, "%s", o->title ? o->title : ""); snprintf(Q.sub, sizeof Q.sub, "%s", o->sub ? o->sub : "");
-  snprintf(Q.url, sizeof Q.url, "%s", o->url ? o->url : ""); if (Q.url[0]) httpd_url_shown(Q.url, Q.shown, sizeof Q.shown);
+  snprintf(Q.url, sizeof Q.url, "%s", o->url ? o->url : "");
+  if (Q.url[0]) httpd_url_shown(Q.url, Q.shown, sizeof Q.shown);
   snprintf(Q.doneTitle, sizeof Q.doneTitle, "%s", o->doneTitle ? o->doneTitle : ""); snprintf(Q.doneSub, sizeof Q.doneSub, "%s", o->doneSub ? o->doneSub : "");
   Q.o.title = Q.o.sub = Q.o.url = Q.o.doneTitle = Q.o.doneSub = NULL; /* the caller's strings may not live on */
   layout(); timer_start(&Q.in, 0.3f); Q.nextPoll = app_now() + POLL;
@@ -106,7 +107,10 @@ void qrcard_show_tmdb(void (*onClose)(int hasKey, void *ud), void *ud) {
   tmdb_has_key(); /* the TMDB side ready to take the key from the phone */
   char url[600]; httpd_url("/tmdb", url, sizeof url);
   QrCardOpts o; memset(&o, 0, sizeof o);
-  o.title = T("Titles and descriptions"); o.sub = T("Scan with your phone and paste your TMDB key. Get one at themoviedb.org"); o.url = url;
+  o.title = T("Titles and descriptions"); o.sub = T("Use a phone on the same network as your TV. Scan the code or open the full address below, then paste your TMDB key."); o.url = url;
+#if defined(SB_MAC) || defined(SB_LINUX)
+  o.sub = T("Open the address below in a browser on this computer and paste your TMDB key. Get one at themoviedb.org");
+#endif
   o.check = tmdb_check; o.doneTitle = T("Key saved"); o.doneSub = T("Titles and descriptions now come in your language"); o.doneHold = 1.6f;
   o.onClose = tmdb_closed;
   qrcard_show(&o); tm.cb = onClose; tm.ud = ud; tm.gen = tmdb_generation();
@@ -119,7 +123,10 @@ void qrcard_show_trakt(void (*onClose)(int hasKey, void *ud), void *ud) {
   trakt_has_key(); /* the Trakt side ready to take the id from the phone */
   char url[600]; httpd_url("/trakt", url, sizeof url);
   QrCardOpts o; memset(&o, 0, sizeof o);
-  o.title = T("Ratings and reviews"); o.sub = T("Scan with your phone and paste your Trakt Client ID. The page says where to get it"); o.url = url;
+  o.title = T("Ratings and reviews"); o.sub = T("Use a phone on the same network as your TV. Scan the code or open the full address below, then paste your Trakt Client ID."); o.url = url;
+#if defined(SB_MAC) || defined(SB_LINUX)
+  o.sub = T("Open the address below in a browser on this computer and paste your Trakt Client ID. The page says where to get it");
+#endif
   o.check = trakt_check; o.doneTitle = T("Id saved"); o.doneSub = T("Ratings, their spread and people\xe2\x80\x99s comments now come from Trakt"); o.doneHold = 1.6f;
   o.onClose = trakt_closed;
   qrcard_show(&o); tk.cb = onClose; tk.ud = ud; tk.gen = trakt_generation();
