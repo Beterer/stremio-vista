@@ -137,13 +137,13 @@ static struct { int on; Stream s; Item it; double at; } SW;
 static void switch_to(const Stream *s, const Item *it) { SW.on = 1; SW.s = *s; SW.it = *it; SW.at = SDL_GetTicks() / 1000.0 + 0.16; player_zap_begin(); }
 static int waitPic; static double waitAt; /* waitPic: handed to the player; the card tunes on until the picture runs */
 static void switch_tick(void) { if (!SW.on || SDL_GetTicks() / 1000.0 < SW.at) return; SW.on = 0; player_quiet_next(); app_play(&SW.s, SW.it.type, SW.it.id, SW.it.id, 0); player_title_hint(&SW.it); hub_playing(SW.it.id); card.tuning = 1; waitPic = 1; waitAt = SDL_GetTicks() / 1000.0; } /* (the pill tunes on until the new picture runs) */
-static struct { char id[64]; int st; Stream s; } PK;
+static struct { char id[SB_ID]; int st; Stream s; } PK;
 /* what was last found of a channel's streams (1 one sends a picture, -1 none does), kept ten minutes */
-static struct { char id[64]; int st; double at; } RC[128]; static int rcNext;
+static struct { char id[SB_ID]; int st; double at; } RC[128]; static int rcNext;
 /* the stream that sent a picture, per channel (the background check's, the preview's, the player's): a preview asked
    for a channel found live opens that one at once instead of trying its streams again from the first (dead ones ahead of
    it ran the search out of time: "off air" on a channel that plays). Kept 3 minutes, as the live mark */
-static struct { char id[64]; Stream s; double at; } FS[24]; static int fsNext;
+static struct { char id[SB_ID]; Stream s; double at; } FS[24]; static int fsNext;
 static void found_set(const char *id, const Stream *st) { int k = -1; for (int i = 0; i < 24; i++) if (!strcmp(FS[i].id, id)) { k = i; break; } if (k < 0) { k = fsNext; fsNext = (fsNext + 1) % 24; }
   snprintf(FS[k].id, sizeof FS[k].id, "%s", id); FS[k].s = *st; FS[k].at = now_s(); }
 static int found_get(const char *id, Stream *out) { for (int i = 0; i < 24; i++) if (FS[i].id[0] && !strcmp(FS[i].id, id)) { if (now_s() - FS[i].at > 180) return 0; *out = FS[i].s; return 1; } return 0; }
@@ -198,7 +198,7 @@ static int works(const Stream *s) {
 }
 /* a preview's streams that loaded and never showed a picture (this TV's player does not start some): the next try
    for the preview passes over them, as the player's failover does (a channel the preview called off air played on OK) */
-static unsigned pkSkip[4]; static int npkSkip, pkKeep; static char pkSkipId[64];
+static unsigned pkSkip[4]; static int npkSkip, pkKeep; static char pkSkipId[SB_ID];
 static unsigned url_h(const char *u) { unsigned h = 2166136261u; for (; *u; u++) h = (h ^ (unsigned char)*u) * 16777619u; return h ? h : 1; }
 static int pk_skipped(const char *u) { unsigned h = url_h(u); for (int i = 0; i < npkSkip; i++) if (pkSkip[i] == h) return 1; return 0; }
 /* streams with the ads put in by the server (Google DAI, Pluto's stitcher, Uplynk): webOS 3/4's player loads them and
@@ -341,7 +341,7 @@ void live_peek_set(const char *id, const Stream *s) { snprintf(PK.id, sizeof PK.
 int live_peek_stream(const char *id, Stream *out) { if (!id || strcmp(PK.id, id)) return 0; if (PK.st == 1 && out) *out = PK.s; return PK.st; }
 void live_peek_stop(void) { if (L.asked && L.peek) { pthread_mutex_lock(&L.mu); L.tok++; pthread_mutex_unlock(&L.mu); L.asked = 0; } PK.id[0] = 0; PK.st = 0; }
 const char *live_catalog_of(const char *id) { /* the catalog a channel is in (its title): kept once found, looked for again a second later when not */
-  static char last[64]; static const char *t; static unsigned g; static double at; if (!id) return NULL;
+  static char last[SB_ID]; static const char *t; static unsigned g; static double at; if (!id) return NULL;
   if (g == catGen && !strcmp(last, id) && (t || now_s() - at < 1)) return t; g = catGen; snprintf(last, sizeof last, "%s", id); t = NULL; at = now_s();
   for (int c = 0; c < ncat && !t; c++) for (int i = 0; i < cats[c].n; i++) if (!strcmp(cats[c].ch[i].id, id)) { t = cats[c].def.title; break; }
   return t; }
@@ -352,8 +352,8 @@ int live_reach(const char *id) { if (!id || !*id) return 0;
 
 /* ---- the channels on screen, tried one after another in the background (their streams asked for, the first that
    sends a picture marks the channel live, none: off air), so the marks are true before one is picked ---- */
-static struct { char id[64], type[16]; } PV[32]; static int npv;
-static struct { unsigned tok; char id[64]; double t0; int on, done; pthread_mutex_t mu; Stream s[MAXS]; int ns, next, busy, found; } PR = { .mu = PTHREAD_MUTEX_INITIALIZER };
+static struct { char id[SB_ID], type[16]; } PV[32]; static int npv;
+static struct { unsigned tok; char id[SB_ID]; double t0; int on, done; pthread_mutex_t mu; Stream s[MAXS]; int ns, next, busy, found; } PR = { .mu = PTHREAD_MUTEX_INITIALIZER };
 void live_probe_visible(const char *const *ids, const char *const *types, int n) {
   if (n > 32) n = 32; npv = n; for (int i = 0; i < n; i++) { snprintf(PV[i].id, sizeof PV[i].id, "%s", ids[i]); snprintf(PV[i].type, sizeof PV[i].type, "%s", types[i] && *types[i] ? types[i] : "tv"); } }
 static void pr_kick(void);

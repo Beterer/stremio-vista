@@ -219,7 +219,7 @@ static void tracks(double now) {
 }
 static void states(double now) {
   static const char *S[] = { "idle", "loading", "playing", "paused", "ended", "error", "choosing" }; char title[256]; double pos, du; int s = -1;
-  char ty[16] = "", id[96] = "", vid[96] = ""; int any = 0; for (int i = 0; i < MAXC; i++) if (C[i].fd >= 0 && C[i].auth) any = 1;
+  char ty[16] = "", id[128] = "", vid[160] = ""; /* (SB_ID / SB_VID: a long addon id whole, #81) */ int any = 0; for (int i = 0; i < MAXC; i++) if (C[i].fd >= 0 && C[i].auth) any = 1;
   if (any && H.ident) { static char lastId[200]; char cur[200]; H.ident(ty, sizeof ty, id, sizeof id, vid, sizeof vid); snprintf(cur, sizeof cur, "%s|%s", id, vid); /* what plays: asked once a pass, only with a phone connected */
     if (strcmp(cur, lastId)) { snprintf(lastId, sizeof lastId, "%s", cur); for (int k = 0; k < MAXC; k++) C[k].lastS = -1; } } /* (another title or episode: told at once) */
   for (int i = 0; i < MAXC; i++) { Client *c = &C[i]; if (c->fd < 0 || !c->auth) continue;

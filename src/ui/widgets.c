@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
-static char markId[64]; static double markAt; /* the title just marked as watched: its badge pops in (card_mark_pop) */
+static char markId[SB_ID]; static double markAt; /* the title just marked as watched: its badge pops in (card_mark_pop) */
 
 void glass_rrect(float x, float y, float w, float h, float r, uint32_t base, float sheenTop, float sheenBottom, float edge) {
   gfx_rrect(x, y, w, h, r, base);
@@ -215,7 +215,7 @@ int ph_picture(GLuint tex, float x, float y, float w, float h, float r, uint32_t
 int ph_hold(void) { static int h = -1; if (h < 0) h = getenv("SB_PH_HOLD") != NULL; return h; }
 
 /* ---- cards ---- */
-static char cardKey[80]; /* the card drawn now: "poster:<id>" (a poster flies to the title page's cover) */
+static char cardKey[SB_ID + 16]; /* the card drawn now: "poster:<id>" (a poster flies to the title page's cover) */
 static void card_art(const char *src, float x, float y, float w, float h, float r, int wide, int loadArt, int *shown) {
   *shown = 0;
   int fit = wide ? 1 : 0; GLuint tex = 0;                 /* posters fill the card as they are; wide art is cover-cropped */

@@ -190,7 +190,7 @@ static const Swatch *first_ok(const Palette *p, int withMuted) {
   return NULL;
 }
 /* the colours found for a title, kept across runs (store node "tintMem2": id -> {cover:[..], logo:[..]}) */
-typedef struct { char id[64], poster[512], logo[512]; int artDone, logoDone; Palette art, logo_; double at; } TintJob;
+typedef struct { char id[SB_ID], poster[512], logo[512]; int artDone, logoDone; Palette art, logo_; double at; } TintJob;
 static TintJob tintJobs[8];
 static cJSON *tint_mem(void) { cJSON *m = store_node("tintMem2"); if (!m) { m = cJSON_CreateObject(); store_set_node("tintMem2", m); } return m; }
 static int tint_for(const char *id, uint32_t out[4]) {
@@ -199,7 +199,7 @@ static int tint_for(const char *id, uint32_t out[4]) {
   for (int i = 0; i < 4; i++) out[i] = (uint32_t)cJSON_GetArrayItem(a, i)->valuedouble;
   return 1;
 }
-static char scopeId[64], scopePoster[512], scopeLogo[512];
+static char scopeId[SB_ID], scopePoster[512], scopeLogo[512];
 static void tint_settle(TintJob *j) {
   const Swatch *ca = first_ok(&j->art, 1), *cl = first_ok(&j->logo_, 0);
   cJSON *e = cJSON_CreateObject(); uint32_t c[4];
@@ -209,7 +209,7 @@ static void tint_settle(TintJob *j) {
   cJSON *m = tint_mem(); cJSON_DeleteItemFromObject(m, j->id); cJSON_AddItemToObject(m, j->id, e);
   while (cJSON_GetArraySize(m) > 200) cJSON_DeleteItemFromArray(m, 0); /* oldest out */
   store_set_node("tintMem2", cJSON_Duplicate(m, 1));
-  char id[64]; snprintf(id, sizeof id, "%s", j->id); j->id[0] = 0;
+  char id[SB_ID]; snprintf(id, sizeof id, "%s", j->id); j->id[0] = 0;
   if (scopeId[0] && !strcmp(scopeId, id)) accent_scope(scopeId, scopePoster, scopeLogo); /* the page waiting for it */
 }
 void accent_tint_fetch(const char *id, const char *poster, const char *logo) {

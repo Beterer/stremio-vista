@@ -39,7 +39,7 @@ typedef struct { char name[96]; Stream *items; int n; int resume; } Group;
 static struct {
   int open, zone; /* 0 list, 1 chips */ Tween x, op; /* the panel's slide and fade: an even ease-out (the quick-tween curve put it all in the first two frames) */ Tween out; int closing; SGlass glass;
   Group groups[MAXG]; int ng; unsigned tok; int loading; double t; char key[160];
-  char type[16], id[64], vid[80], title[256], ep[400];
+  char type[16], id[SB_ID], vid[SB_VID], title[256], ep[400];
   int filter, chipIdx; int chips[MAXG + 1]; int nchips; QT chipsX;
   const Stream *items[MAXITEMS]; int itemGroup[MAXITEMS], kind[MAXITEMS]; int n, idx; QT listY; Nudge nudge; FPill pill;
   float itemH[MAXITEMS], itemY[MAXITEMS], headY[MAXITEMS]; int laid; double nwAt[MAXITEMS]; double enterAt; /* the rows rise in one after another from here (opening, a new filter) */

@@ -13,7 +13,7 @@
 #define LIVE_TOAST "\002live" /* a toast key: a red LIVE chip before the words */
 
 /* a channel as the catalogs keep it (small: there can be thousands); live_item makes it a card */
-typedef struct { char id[64], type[16], name[96], logo[300], poster[300]; } LiveCh;
+typedef struct { char id[SB_ID], type[16], name[96], logo[300], poster[300]; } LiveCh;
 void live_item(const LiveCh *c, Item *out);
 extern void (*live_fail_hook)(const char *id, const char *code, int back); /* a channel started that will not play (code "offair": known off air, not tried; "nostream": none of its streams sent a picture; back: the channel before plays on), for a phone casting; NULL: no one told */
 extern void (*live_remote_play)(const Item *it); /* a phone casting: a channel started is handed to the TV (it finds its stream there and opens its channel player); NULL on a TV */

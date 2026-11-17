@@ -56,7 +56,7 @@ typedef struct { char title[96]; ItemList items; int col, wide, label, hidden, c
   CatalogDef def; int hasDef, skipAt, skipAlt, more, paging; double pageAt; int retries; double retryAt; } Row; /* skipAlt: the offset to try instead when the first next page brought nothing new (an addon that pages only by its page size) */
 #define NFEAT 8
 /* what the hero shows: put in while it is invisible, all together */
-typedef struct { char id[64], type[24], name[256], metaName[256], metaLine[96], desc[1024], logo[512]; int wait; unsigned sig; } HeroView;
+typedef struct { char id[SB_ID], type[24], name[256], metaName[256], metaLine[96], desc[1024], logo[512]; int wait; unsigned sig; } HeroView;
 /* what the drawing measures in the view, made once per view (and language): wrap counts, the meta line */
 typedef struct { unsigned ver, lg; int spot, discName, discDesc, homeName; MetaParts mp; } HeroLay;
 typedef struct {
@@ -64,7 +64,7 @@ typedef struct {
   Row rows[MAXROWS]; int n, rowIdx, built; unsigned gen, libVer;
   /* Discover's spotlight: this year's films and the trending series, alternating; it moves on every 4 s */
   Item feat[NFEAT]; int nfeat, featIdx, featOn, featLoad, featGotM, featGotS; ItemList featM, featS; double featAt, featArmAt; int swDir; /* featArmAt: when its timer started (the current dot fills up to featAt); swDir: the way the last move went */
-  Tween spotY, rowsA, spotA, dotsA, dotW[NFEAT]; int heroSpot, dotsWant; double dotsGo; char scoped[64];
+  Tween spotY, rowsA, spotA, dotsA, dotW[NFEAT]; int heroSpot, dotsWant; double dotsGo; char scoped[SB_ID];
   Tween hostY; Timer1 fade; Nudge nudge; int ptrHold, holdRow; /* the pointer moves the focus: the rows stay where they are (as for holdRow) until a key */
   double heroAt, fadeHold; int heroPending, fastBg; /* fadeHold: the fade-in waits (a moment at most) for the whole description */
   /* the hero, in one path: fade out, gather (details, translation, logo: 0.45 s at most), put in, fade in; anything
@@ -131,7 +131,7 @@ static void filt_live(Board *b);
 /* the rows as they were, found again by what they are (never by their place: a row appearing above, Upcoming episodes
    after a series is marked, would hand each row below the place of the one above it); on a library change
    (keepItems) a catalog row also keeps what it had loaded, its later pages and where it was in them */
-typedef struct { char title[96], fid[64]; CatalogDef def; int hasDef; ItemList items; int col, skipAt, more; char (*ids)[64]; int nids; float off; Item *was; int nwas; } KeptRow; /* ids: a row without a catalog's titles in order (its cards glide to their new places) */ /* fid: the item focused in it */
+typedef struct { char title[96], fid[SB_ID]; CatalogDef def; int hasDef; ItemList items; int col, skipAt, more; char (*ids)[SB_ID]; int nids; float off; Item *was; int nwas; } KeptRow; /* ids: a row without a catalog's titles in order (its cards glide to their new places) */ /* fid: the item focused in it */
 static int keepItems;
 static int same_row(const KeptRow *k, const char *title, const CatalogDef *d, int hasDef) {
   if (strcmp(k->title, title) || k->hasDef != hasDef) return 0; if (!hasDef) return 1;
@@ -470,7 +470,7 @@ static HeroLay *hero_lay(Board *b) {
 static const char *trending_up(void) { static char eye[64]; static unsigned lg; if (lg != i18n_gen()) { lg = i18n_gen(); snprintf(eye, sizeof eye, "%s", T("Trending now")); text_upper(eye, sizeof eye); } return eye; }
 /* the title's name and its text art, crossfading: the name (the art late, or none) fades in from where it begins to
    show, and once the art comes it fades in over the name as the name goes. Never a pop (k: 0 Home, 1 Discover) */
-static struct { char id[64]; double nameAt, logoAt; } HX[2];
+static struct { char id[SB_ID]; double nameAt, logoAt; } HX[2];
 static float hx_k(double t0, double d) { if (t0 <= 0) return 0; float x = (float)((app_now() - t0) / d); x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); }
 static void hx_step(int k, const char *id, int logo, int nameShows, float *la, float *na) {
   if (strcmp(HX[k].id, id)) { snprintf(HX[k].id, sizeof HX[k].id, "%s", id); HX[k].nameAt = HX[k].logoAt = 0; }
@@ -581,7 +581,7 @@ static void hero_draw(Board *b) {
     else { int lines; if (v->wait) lines = hl->homeName; else { gfx_opacity_push(na); lines = sx_text_wrapped(hero_key(b), v->name, x, y, HERO_W, 2, 76, 800, WHITE_A(255), -1.6f, align, 76 * 1.04f); gfx_opacity_pop(); } y += lines * 76 * 1.04f; } } /* text art on its way: the name waits unseen, then fades in */
   gfx_opacity_pop(); gfx_opacity_push(ma);
   if (live_type(v->type)) { /* a channel: its logo and its state under it (live_mark: LIVE once a stream of it works, Off air when none does), nothing else */
-    static float k3[3]; static char kid[64]; if (strcmp(kid, v->id)) { snprintf(kid, sizeof kid, "%s", v->id); k3[0] = k3[1] = k3[2] = 0; } /* each channel's mark from nothing: it fades in once its own try says, never the last one's */
+    static float k3[3]; static char kid[SB_ID]; if (strcmp(kid, v->id)) { snprintf(kid, sizeof kid, "%s", v->id); k3[0] = k3[1] = k3[2] = 0; } /* each channel's mark from nothing: it fades in once its own try says, never the last one's */
     { const char *ids[1] = { v->id }, *tys[1] = { v->type }; live_probe_visible(ids, tys, 1); } /* (tried now, not only once its preview starts) */
     y += 28; float cw = live_mark(x, y, 1.28f, rtl, k3, live_reach(v->id)), ch = 36 * 1.28f, cx0 = rtl ? x - cw : x;
     const char *cat = live_catalog_of(v->id); char cb[96] = ""; /* where it comes from, quietly, beside it (its catalog's name, not its type) */

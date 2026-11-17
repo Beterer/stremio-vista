@@ -24,7 +24,7 @@
 #define GIVEUP 12.0   /* loaded and still no picture: none */
 #endif
 
-static struct { char id[64], src[SB_URL_MAX]; Stream st; Item it; int asked, own, quiet, shown, failed, reloads, out, handed; double t0, steadyAt; Tween a; } K; /* handed: given to the player (its own window grows from the box) */ /* out: the picture fading to black before the next channel */
+static struct { char id[SB_ID], src[SB_URL_MAX]; Stream st; Item it; int asked, own, quiet, shown, failed, reloads, out, handed; double t0, steadyAt; Tween a; } K; /* handed: given to the player (its own window grows from the box) */ /* out: the picture fading to black before the next channel */
 static Item want; static int wanted; static float boxR = 22; /* boxR: the box's corner radius as last drawn */ static float wx, wy, ww, wh, bx, by, bw, bh; /* the box asked for, the one the picture is placed in */
 
 void lpk_want(const Item *it, float x, float y, float w, float h) { if (it) { want = *it; wanted = 1; wx = x; wy = y; ww = w; wh = h; } }
@@ -114,7 +114,7 @@ void lpk_draw(const char *id, const char *logo, float x, float y, float W, float
   /* the box stays black while a channel's picture is on its way (the last one faded into it, the next fades out of
      it); the channel's logo and colours come only when it is taking long (1.2 s) or nothing plays */
   float mine0v = K.own || K.out ? K.a.v : 0; /* (the picture in the box as it was) */
-  static char dId[64], dLogo[512], pLogo[512]; static double dAt; static float lks, pVis; if (id && strcmp(dId, id)) { pVis = 1 - (mine0v); /* (how much of the last logo showed: none under a picture) */ snprintf(dId, sizeof dId, "%s", id); snprintf(pLogo, sizeof pLogo, "%s", dLogo); snprintf(dLogo, sizeof dLogo, "%s", logo ? logo : ""); dAt = now; }
+  static char dId[SB_ID], dLogo[512], pLogo[512]; static double dAt; static float lks, pVis; if (id && strcmp(dId, id)) { pVis = 1 - (mine0v); /* (how much of the last logo showed: none under a picture) */ snprintf(dId, sizeof dId, "%s", id); snprintf(pLogo, sizeof pLogo, "%s", dLogo); snprintf(dLogo, sizeof dLogo, "%s", logo ? logo : ""); dAt = now; }
   if (logo && *logo && !dLogo[0]) snprintf(dLogo, sizeof dLogo, "%s", logo);
   int mine = id && !strcmp(id, K.id); float v = K.handed ? 1 : K.own || K.out ? K.a.v : 0; /* (the picture in the box whatever is focused: on the very frame of a move it stays, then fades) */
 #ifndef SB_WEBOS

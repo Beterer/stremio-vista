@@ -34,7 +34,7 @@ static void on_play(const CastPlay *p) {
     Item it; memset(&it, 0, sizeof it); snprintf(it.type, sizeof it.type, "%s", p->type); snprintf(it.id, sizeof it.id, "%s", p->id); snprintf(it.name, sizeof it.name, "%s", p->title); snprintf(it.poster, sizeof it.poster, "%s", p->poster); snprintf(it.logo, sizeof it.logo, "%s", p->logo);
     char ty[16], pid[96], pv[96]; player_cast_ident(ty, sizeof ty, pid, sizeof pid, pv, sizeof pv); live_start(&it, NULL, 0, player_open() && live_type(ty)); return; } /* (a channel already on: switched in its player, as Up / Down) */
   Stream s; memset(&s, 0, sizeof s); snprintf(s.url, sizeof s.url, "%s", p->url); snprintf(s.name, sizeof s.name, "%s", p->title); snprintf(s.title, sizeof s.title, "%s", p->title);
-  const char *type = *p->type ? p->type : "movie", *id = *p->id ? p->id : "cast"; char vid[96];
+  const char *type = *p->type ? p->type : "movie", *id = *p->id ? p->id : "cast"; char vid[SB_VID];
   if (!strcmp(type, "series") && p->season > 0) snprintf(vid, sizeof vid, "%s:%d:%d", id, p->season, p->episode); else snprintf(vid, sizeof vid, "%s", id);
   const char *urls[16], *langs[16]; for (int i = 0; i < p->nsubs && i < 16; i++) { urls[i] = p->subs[i].url; langs[i] = p->subs[i].lang; }
   player_next_subs(urls, langs, p->nsubs); player_next_art(p->title, p->poster, p->background, p->logo);
@@ -45,7 +45,7 @@ static void on_play(const CastPlay *p) {
 static void on_playbest(const CastPlay *p) {
   app_activity();
   snprintf(castTitle, sizeof castTitle, "%s", p->title);
-  const char *type = *p->type ? p->type : "movie", *id = p->id; char vid[96];
+  const char *type = *p->type ? p->type : "movie", *id = p->id; char vid[SB_VID];
   if (*p->vid) snprintf(vid, sizeof vid, "%s", p->vid); else if (!strcmp(type, "series") && p->season > 0) snprintf(vid, sizeof vid, "%s:%d:%d", id, p->season, p->episode); else snprintf(vid, sizeof vid, "%s", id);
   player_next_subs(NULL, NULL, 0); player_next_art(p->title, p->poster, p->background, p->logo);
   player_cast_best(type, id, vid, p->pos);

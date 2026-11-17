@@ -1,6 +1,6 @@
 #!/bin/bash
 # A release in one step:  tools/release.sh VERSION [site-dir]
-# Sets the version (pkg/appinfo.json and the What's new card, which must match), builds the IPK
+# Sets the version (pkg/appinfo.json; the What's new card keeps its own: a new card, a new card version), builds the IPK
 # (tools/package.sh) and writes the Homebrew Channel files into the site folder, the GitHub Pages
 # repository users add to the Homebrew Channel:
 #   <id>_<version>_arm.ipk, icon.png, api/apps/<id>/manifest.json (+ releases/latest.json,
@@ -20,7 +20,7 @@ mkdir -p "$SITE"
 python3 - "$ROOT" "$VER" <<'EOF'
 import re, sys
 root, ver = sys.argv[1], sys.argv[2]
-for f in ('pkg/appinfo.json', 'assets/whatsnew.json'): # the version alone, the files as they are written
+for f in ('pkg/appinfo.json',): # the version alone, the file as it is written (the What's new card keeps its own version: it is keyed by it, so a fix release with the same card never shows it twice)
     p = root + '/' + f; t = open(p, encoding='utf-8').read(); n = re.subn(r'("version"\s*:\s*")[^"]*(")', r'\g<1>' + ver + r'\g<2>', t, count=1)
     if n[1] != 1: sys.exit('no version in ' + f)
     open(p, 'w', encoding='utf-8').write(n[0])

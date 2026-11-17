@@ -50,10 +50,10 @@ static struct {
   DetailParams p; cJSON *meta, *pend; int zone; /* 0 btns, 1 seasons, 2 eps, 3 the people */
   Person ppl[MAXPPL]; int nppl, pIdx; Tween pScroll; unsigned credGen; Timer1 pRingPop; Tween pRingA, pRingX; int pRingOn, pRingEnter; /* enter: the ring's pop as the row takes the focus (it fades up); a move only scales */ float pplY, btnsY0; char facts[3][160]; int nfacts; int collN, collIx; char collKey[24], collName[160]; unsigned collVer; /* facts[2]: its place in a collection */
   Btn btn[MAXBTN]; int btnIdx, nbtn; FPill pill; Nudge nudge;
-  Season seasons[MAXSEASON]; int nseasons, seasonIdx, epIdx; const cJSON **eps; int neps; int *watched; char resVid[80]; float resPct;
+  Season seasons[MAXSEASON]; int nseasons, seasonIdx, epIdx; const cJSON **eps; int neps; int *watched; char resVid[SB_VID]; float resPct;
   double sT; int sPending; QT seasonsX; FPill sPill; int sPillOn; /* the season highlight glides between the pills, as the sheets' does */ Tween epsX; Timer1 epsIn; int epsStale; Tween epRingX, epRingA; Timer1 epRingPop; int epRingOn;
   int col; Tween lowerY, moreH; int moreHSet; /* moreH: the synopsis and faces' height, eased (what comes late moves the rest smoothly) */ Tween moreA, moreY, btnsA, btnsY; Tween posterA, posterX, posterS;
-  char logoUrl[512], bgKeep[512]; double openAt, bgT; int bgPending; int playHold, holdSwell; double playHoldAt; Tween hk, hintA, lblA, pgDim, revHintA; int pageZone, wasPage; /* the reviews risen: the zone they were entered from, back to it as they let down */ double zone0At; int zoneWas; int epHold, epSwell; double epHoldAt; float epK; char epVid[80]; /* Play held (best stream on): its pill fills and grows into Hold for streams (lblA: the words, quickly); an episode held: its streams; the film page's Reviews hint */
+  char logoUrl[512], bgKeep[512]; double openAt, bgT; int bgPending; int playHold, holdSwell; double playHoldAt; Tween hk, hintA, lblA, pgDim, revHintA; int pageZone, wasPage; /* the reviews risen: the zone they were entered from, back to it as they let down */ double zone0At; int zoneWas; int epHold, epSwell; double epHoldAt; float epK; char epVid[SB_VID]; /* Play held (best stream on): its pill fills and grows into Hold for streams (lblA: the words, quickly); an episode held: its streams; the film page's Reviews hint */
   Item focusedEp; unsigned gen; TmdbWait tw; int locDone; unsigned tgen;
   int moreWait; double moreUntil; Timer1 moreIn, pplIn, faceIn; int hadPpl, facesShown; /* faceIn: the faces come in from the side, one after another */   /* the synopsis and the faces come in together */
   int posterLate, logoLate, posterPh; Timer1 posterIn, logoIn; int posterSeen, logoSeen;
@@ -131,7 +131,7 @@ static void queue_season(void) { D.epsStale = 1; D.sPending = 1; D.sT = app_now(
 static void flush_season(void) { if (D.sPending) { D.sPending = 0; build_eps(); } }
 
 /* ---- trailers: resolved first, then the player in trailer mode ---- */
-static struct { unsigned tok; char type[16], id[64]; int busy; } TR;
+static struct { unsigned tok; char type[16], id[SB_ID]; int busy; } TR;
 static void on_trailer(const Trailer *t, const char *err, void *ud) {
   (void)err; (void)ud; TR.busy = 0; TR.tok = 0;
   if (!player_waiting()) return; /* Back while it was being found */
@@ -160,7 +160,7 @@ static int play_target(char *vid, size_t cap) {
   const char *v = D.eps && D.epIdx < D.neps ? js_str(D.eps[D.epIdx], "id", NULL) : NULL; if (!v || !*v) v = js_str(st, "video_id", NULL); if (!v || !*v) v = first_unwatched(); if (!v) return 0; snprintf(vid, cap, "%s", v); return 1; }
 static float hold_w(void) { static float w; static unsigned lg; if (!w || lg != i18n_gen()) { lg = i18n_gen(); w = text_width(T("Hold for streams"), 26, 600, 0); } return w; }
 static void play_best(void) {
-  char vid[80]; cJSON *lb = lib_get(ID()); const cJSON *st = js_obj(lb, "state");
+  char vid[SB_VID]; cJSON *lb = lib_get(ID()); const cJSON *st = js_obj(lb, "state");
   if (!play_target(vid, sizeof vid)) return;
   Stream r; if (st && js_num(st, "timeOffset", 0) > 60000 && (!is_series() || !strcmp(js_str(st, "video_id", ""), vid)) && sb_resume_stream(ID(), vid, &r)) { app_play(&r, D.p.it.type, ID(), vid, 0); return; }
   play_best_vid(vid);
@@ -210,7 +210,7 @@ static int eye_ep(const char **lbl, const char **icon, float *w) {
   Item ep; if (!revpanel_page_episode(&ep)) return 0; int on = lib_is_marked_watched(&ep);
   *lbl = T(on ? "Mark episode as unwatched" : "Mark episode as watched"); *icon = on ? "eyeOff" : "eye"; *w = text_width(*lbl, 26, 600, 0); return 1; }
 static void btn_act(int kind) {
-  if (kind == B_PLAY) { if (best_on()) play_best(); else { char vid[80]; if (play_target(vid, sizeof vid)) detail_open_streams(vid); } }
+  if (kind == B_PLAY) { if (best_on()) play_best(); else { char vid[SB_VID]; if (play_target(vid, sizeof vid)) detail_open_streams(vid); } }
   else if (kind == B_TRAILER) detail_trailer(D.p.it.type, ID(), mname());
   else if (kind == B_SIMILAR) { DetailParams p; memset(&p, 0, sizeof p); p.it = meta_item(); app_go(SCR_SIM, &p, 0); }
   else if (kind == B_COLL) { DetailParams p; memset(&p, 0, sizeof p); snprintf(p.it.type, sizeof p.it.type, "collection"); snprintf(p.it.id, sizeof p.it.id, "coll:%s", D.collKey); snprintf(p.it.name, sizeof p.it.name, "%s", D.collName); snprintf(p.it.videoId, sizeof p.it.videoId, "%s", ID()); app_go(SCR_SIM, &p, 0); } /* (videoId: the film it was opened from) */
@@ -395,7 +395,7 @@ static void render(void) {
     /* landing on the episode list as the page opens: laid out that way from the first frame */
     /* the page opens on its words and buttons; the episode row already rests on where you left off (only a play
        request for an episode lands on the episodes, with its streams) */
-    if (av) { char vid[80]; snprintf(vid, sizeof vid, "%s", av); if (select_episode(vid, oe)) { tween_set(&D.epsX, -(D.epIdx > 1 ? D.epIdx - 1 : 0) * EP_W); if (oe && snap) { D.col = -1; collapse(2, 1); } paint(); if (oe) detail_open_streams(vid); return; } }
+    if (av) { char vid[SB_VID]; snprintf(vid, sizeof vid, "%s", av); if (select_episode(vid, oe)) { tween_set(&D.epsX, -(D.epIdx > 1 ? D.epIdx - 1 : 0) * EP_W); if (oe && snap) { D.col = -1; collapse(2, 1); } paint(); if (oe) detail_open_streams(vid); return; } }
     paint();
   } else { int oe = D.p.openStreams; D.p.openStreams = 0; paint(); if (oe) detail_open_streams(D.p.it.videoId[0] ? D.p.it.videoId : ID()); } /* (Play is the way in, the best stream on or off; a channel's menu asks for its streams at once) */
 }
@@ -555,7 +555,7 @@ static void tick(float dt) {
     if (k > 0 && !D.holdSwell) { D.holdSwell = 1; sound_play(SND_HOLD); }
     if (D.zone != 0 || D.btnIdx >= D.nbtn || D.btn[D.btnIdx].kind != B_PLAY) D.playHold = 0;
     else if (!app_ok_down()) { D.playHold = 0; if (k < 0.35f) { fpill_press(&D.pill); play_best(); } } /* let go early: Play; past a third: let go, nothing */
-    else if (k >= 1) { char vid[80]; D.playHold = 0; fpill_press(&D.pill); if (play_target(vid, sizeof vid)) detail_open_streams(vid); }
+    else if (k >= 1) { char vid[SB_VID]; D.playHold = 0; fpill_press(&D.pill); if (play_target(vid, sizeof vid)) detail_open_streams(vid); }
     tween_set(&D.hk, k); } else { tween_to(&D.hk, 0, 0.22f, EASE_IN_OUT); tween_tick(&D.hk, dt); }
   tween_to(&D.lblA, D.playHold && app_now() - D.playHoldAt > 0.2 ? 1 : 0, 0.1f, EASE_IN_OUT); tween_tick(&D.lblA, dt); /* the words the moment the hold is one */
   { double now = app_now(); float x = 0, fx = 0, fw = BD; int fi = D.zone == 0 || revpanel_page_btns() ? D.btnIdx : -1; /* (the reviews risen: it keeps its place, only dimmed while the reviews hold the focus) */

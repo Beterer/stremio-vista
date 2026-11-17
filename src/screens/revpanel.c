@@ -75,7 +75,7 @@ static float ap(int i, int present) { return ap_sig(i, present, R.apSig[i]); }
 static unsigned hsh(const char *s) { unsigned h = 2166136261u; for (; s && *s; s++) h = (h ^ (unsigned char)*s) * 16777619u; return h; }
 static int is_ep(void) { return R.episode > 0; }
 static const cJSON *meta(void) { return sb_meta_cached(R.it.type, R.it.id); }
-static const cJSON *video(void) { const cJSON *v; char vid[80]; if (!is_ep()) return NULL; snprintf(vid, sizeof vid, "%s:%d:%d", R.it.id, R.season, R.episode);
+static const cJSON *video(void) { const cJSON *v; char vid[SB_VID]; if (!is_ep()) return NULL; snprintf(vid, sizeof vid, "%s:%d:%d", R.it.id, R.season, R.episode);
   cJSON_ArrayForEach(v, js_arr(meta(), "videos")) if (!strcmp(js_str(v, "id", ""), vid)) return v; return NULL; }
 /* "Jan 8, 2021" from "2021-01-08..." (as the title page writes it) */
 static void date_of(const char *r, char *out, size_t cap) {

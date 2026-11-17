@@ -111,9 +111,9 @@ static float fill_ease(double t);
 typedef struct { int k; /* 0 none 1 intro 2 recap 3 outro */ int big, nbtn, idx, autoN; double t0, adur; struct { const char *id; char lb[48]; double to; int main; } b[2]; } PPrompt;
 static struct {
   int open, closing, live, failed, started; double openedAt;
-  char type[16], id[64], vid[80], name[256], logo[512], bg[512], poster[512], sname[600], saddon[96], url[SB_URL_MAX], alt[SB_URL_MAX]; int altTried, p2pRetried; double lastPos; int quiet, adopt, isTrailer, isHls, liveStream, hlsVod; /* liveStream: its HLS playlist has no end (a live broadcast); hlsVod: it has an end (a replay) */
+  char type[16], id[SB_ID], vid[SB_VID], name[256], logo[512], bg[512], poster[512], sname[600], saddon[96], url[SB_URL_MAX], alt[SB_URL_MAX]; int altTried, p2pRetried; double lastPos; int quiet, adopt, isTrailer, isHls, liveStream, hlsVod; /* liveStream: its HLS playlist has no end (a live broadcast); hlsVod: it has an end (a replay) */
   cJSON *meta; const cJSON *videos; int season, episode; char epTitle[256], year[8], genre[64];
-  struct { int has; char vid[80], se[32], title[256], thumb[512], ov[600]; } next; int sim; double startAt;
+  struct { int has; char vid[SB_VID], se[32], title[256], thumb[512], ov[600]; } next; int sim; double startAt;
   struct { int has, tried; double at; char id[16], name[160], poster[400], bg[400], part[64]; } coll; /* a film in a collection: the next one */
   int mode; /* 0 video 1 osd 2 tray 3 prompt */ int row; /* 0 btns 1 bar */ int bIdx;
   struct { const char *id; const char *icon; char lb[48]; int big, nx; float x0, x, y, w, lw; Mo dx; } btns[MAXBTN]; int nbtn, nL;
@@ -130,14 +130,14 @@ static struct {
   double seekT, seekCommitAt, lastKeyAt; int seekDir, rep, skm, skOn; char seekTxt[48]; double seekTxtUntil;
   /* the focus pill under the buttons and its name */
   Mo focX, focY, focW, focH, focA, tipA; char tip[48]; double tipAt, focFadeAt; int focSeen;
-  int ldd, exitFade; char trName[128], p2pLine[160]; Mo p2pA; struct { int on, held, target, shown, ns, etaShown, made, slips; double holdT, repAt, t0, eta, gainAt, lastF, shownAt, shownF, sAt[40], sF[40]; } pw; /* shown: the wait known to be needed (its line, bar and Play now up); sAt/sF: the progress every 0.5 s, for the pace of the last 15 s */ struct { int on, v; double t0; } ps; /* ps: the seek previews from a lighter copy (core/prevsrc); v 0 not checked, 1 checking, 2 the same cut */ /* pw: previews first (the setting): the film loaded and held on its first frame behind the art while most of its previews are made */
+  int ldd, exitFade; char trName[128], p2pLine[160]; Mo p2pA; struct { int on, held, target, shown, ns, etaShown, made, slips; double heldAt, holdT, repAt, t0, eta, gainAt, lastF, shownAt, shownF, sAt[40], sF[40]; } pw; /* shown: the wait known to be needed (its line, bar and Play now up); sAt/sF: the progress every 0.5 s, for the pace of the last 15 s */ struct { int on, v; double t0; } ps; /* ps: the seek previews from a lighter copy (core/prevsrc); v 0 not checked, 1 checking, 2 the same cut */ /* pw: previews first (the setting): the film loaded and held on its first frame behind the art while most of its previews are made */
   
   /* prompts (shown: the one drawn, kept while it fades out) */ PPrompt prompt, shown; int dismissed[4];
   struct { int has; double s, e; } intro, recap, outro; int skipsAsked, skipsOk;
   /* the skip sources being asked (merged by rank when they have answered) */
   struct { unsigned tok; int pending, sent, nsrc, isEp, se, en, chapWait; double quickAt, endAt, d; struct { char url[440]; int kind, tries, live; double retryAt; } job[3]; struct { int rank; struct { int has; double s, e; } g[3]; } src[4]; } sk;
   /* next episode from the closest source */
-  int nextTried; struct { unsigned tok; int done, has; double bs, until; char vid[80], info[700], url[SB_URL_MAX], addon[96], binge[96]; Stream best; } nx;
+  int nextTried; struct { unsigned tok; int done, has; double bs, until; char vid[SB_VID], info[700], url[SB_URL_MAX], addon[96], binge[96]; Stream best; } nx;
   int ended; double endGoAt; double metaRetryAt;
   /* the paused screensaver, the file size, the picture size */
   double liveT0, steadyAt; /* the first frame came / playing steadily since */
@@ -149,10 +149,10 @@ static struct {
   Stream st; int nSubAddons; char subLang[24]; unsigned ytTok;
   /* the addons' subtitles (the stream's own, then each subtitles addon's), apart from the built-in list in ext */
   SubEntry *adx; int nAdx, adxLoading, adxTry; double adxRetryAt; unsigned adxReq;
-  /* tray */ struct { int kind; /* 0 none 1 eps 2 src 3 aud 4 subs 5 epsrc */ char tabs[40][48]; int ntabs, tab, seasonList[40], season; int zone; /* 0 row 1 tabs 2 cols */ TItem row[MAXROW]; int n, idx, onBtn; TCol cols[4]; int ncols, c, r[4]; char title[300], epvid[80]; int backIdx, backTab; Mo open, openA; float ox, oy; Mo rowX, tabsX, colY[4], ringX, ringY, ringA, plY[4], plA[4]; float ringW, ringH; int loading; int armed; } tray;
+  /* tray */ struct { int kind; /* 0 none 1 eps 2 src 3 aud 4 subs 5 epsrc */ char tabs[40][48]; int ntabs, tab, seasonList[40], season; int zone; /* 0 row 1 tabs 2 cols */ TItem row[MAXROW]; int n, idx, onBtn; TCol cols[4]; int ncols, c, r[4]; char title[300], epvid[SB_VID]; int backIdx, backTab; Mo open, openA; float ox, oy; Mo rowX, tabsX, colY[4], ringX, ringY, ringA, plY[4], plA[4]; float ringW, ringH; int loading; int armed; } tray;
   /* the sources tray's lists: one per addon serving the video (in the user's order), all asked as it opens; each stream
      read once as it comes (best_facts), the best fit for this TV among them all */
-  struct { char vid[80]; struct { char name[96]; Stream *items; BestFacts *f; int n, st, nf, came; unsigned tok; Mo ia; } g[16]; int ng, on, bg, bi; } srcs; /* st: 0 not asked, 1 asked (or came, its streams still being read: nf of n, came set), 2 shown, 3 came empty; ia: its rows fading in as they come; bg/bi: the best fit (-1 none) */
+  struct { char vid[SB_VID]; struct { char name[96]; Stream *items; BestFacts *f; int n, st, nf, came; unsigned tok; Mo ia; } g[16]; int ng, on, bg, bi; } srcs; /* st: 0 not asked, 1 asked (or came, its streams still being read: nf of n, came set), 2 shown, 3 came empty; ia: its rows fading in as they come; bg/bi: the best fit (-1 none) */
   /* subs */ SubEntry *ext; int next_; int nExt, extLoading; char curSub[1100]; struct { int list; char addon[64], lang[24]; } pick; Cue *cues; int ncues; double subDelay; VidTrack emb[16]; int nEmb; int autoSubDone; unsigned subReq; unsigned trSubTok; int locDone;
   int curAud; int autoAudDone; int didResume;
   /* sound this TV can't decode (DTS, TrueHD): when the DTS track started playing, the codecs refused on this stream (error
@@ -247,7 +247,7 @@ static XLine stX[3];
    the real text has stayed the same 4 s and only while it is a calm one; never once the picture runs, never on a
    failure, never over a number, an addon or a reason) */
 static unsigned loadGen; /* bumps with each new stream (prepare) */
-static struct { int binge; char vid[96]; int firstToday, film, resume; unsigned gen; } WA; /* the viewer's moment, in memory only */
+static struct { int binge; char vid[SB_VID]; int firstToday, film, resume; unsigned gen; } WA; /* the viewer's moment, in memory only */
 static int calm_step(const char *st, WlStep *step) { /* the calm texts a line may cover, and the wait they are */
   if (!*st || !strcmp(st, T("Finding the closest source\xe2\x80\xa6")) || !strcmp(st, T("Tuning in\xe2\x80\xa6"))) { *step = WL_FIND; return 1; } /* (a chosen stream or a channel starting: humour only) */
   if (!strcmp(st, T("Choosing the best stream"))) { *step = WL_CHOOSE; return 1; }
@@ -305,7 +305,7 @@ static void pw_end(const char *why) { if (!P.pw.on) return; P.pw.on = 0; video_s
   status_apply(""); if (P.pw.held) { if (fabs(video_time() - P.pw.holdT) > 1) { fprintf(stderr, "[player] previews first: back to %.1f s where it waited (it had moved to %.1f s)\n", P.pw.holdT, video_time()); video_seek(P.pw.holdT); } video_play(); } } /* (it starts where it waited, never further on) */
 static void pw_tick(void) { if (!P.pw.on) return; VidState pv = video_state(); double now = now_(), el = now - P.pw.t0, pf = sp_progress_f(); int tg = P.pw.target;
   if (P.pw.held && video_settling()) P.pw.holdT = video_time(); /* (the hold follows a jump made while it waits: the resume, which on webOS comes with the same "playing" that set the hold; before, the film went back to 0 s as it started) */
-  if (!P.pw.held && pv == VID_PLAYING) { video_pause(); P.pw.held = 1; P.pw.holdT = video_time(); P.pw.repAt = now; fprintf(stderr, "[player] previews first: the film's first frame ready after %.1f s, held at %.1f s\n", el, P.pw.holdT); }
+  if (!P.pw.held && pv == VID_PLAYING) { video_pause(); P.pw.held = 1; P.pw.heldAt = now; P.pw.holdT = video_time(); P.pw.repAt = now; fprintf(stderr, "[player] previews first: the film's first frame ready after %.1f s, held at %.1f s\n", el, P.pw.holdT); }
   else if (P.pw.held && now - P.pw.repAt > 0.5 && (pv == VID_PLAYING || video_time() > P.pw.holdT + 0.4)) { video_pause(); P.pw.repAt = now; if (pv != VID_PLAYING && !video_settling()) P.pw.holdT = video_time(); /* (a pause that landed late: it waits there, not paused again every 0.5 s) */ if (P.pw.slips++ < 5) fprintf(stderr, "[player] previews first: the film moved on (%.1f s, its pause not taken): paused again\n", video_time()); } /* (a pause the TV ignored while still starting: never a film running behind the art) */
   if (pv == VID_ERROR || P.failed) { P.pw.on = 0; video_start_silent(0); return; }
   int making = sp_active() || sp_source_on(NULL);
@@ -314,6 +314,8 @@ static void pw_tick(void) { if (!P.pw.on) return; VidState pv = video_state(); d
   if (making && pf >= tg) { pw_end(P.pw.shown ? "the share reached" : "already made: no wait"); return; }
   if (making && el > 3 && sp_done()) { pw_end("nothing more to make in the background"); return; } /* (kept on this device: straight in, nothing shown) */
   if (el >= 240) { pw_end("4 minutes"); return; }
+  { double d = dur(); if (P.liveStream || (P.pw.held && (d >= 1e7 || (now - P.pw.heldAt > 8 && !(d > 0))))) { /* (live streams never have previews: at once when the TV says its length is endless; with no length at all, 8 s in, when a film's would be known) */ pw_end("a live stream: it has no previews to wait for"); return; } } /* (#81: a broadcast not known as one before it played, its first frame in and no length) */
+  if (el > 20 && !P.pw.made && pf <= 0 && now - P.pw.gainAt > 20) { pw_end("no preview made in 20 s"); return; } /* (a lighter copy still looked for counts as coming: gainAt) */ /* (#81: none at all, this TV or this file: the film starts; they still come as it plays) */
   if (el > 10 && !making && !ps_busy() && P.ps.v != 1) { pw_end("no previews for this film"); return; }
   if (el > 12 && now - P.pw.gainAt > 45) { pw_end("no new picture for 45 s"); return; }
   if (!P.pw.shown) { if (!making || pf <= 0 || !P.pw.held) return; /* (once its first pictures are made: never a long 0 %; until then the usual loading screen) */ P.pw.shown = 1; P.pw.shownAt = now; P.pw.shownF = pf; P.pw.ns = 0; fprintf(stderr, "[player] previews first: %.1f %% made, waiting for %d %%\n", pf, tg); } /* (only once it is known a wait is needed: the film ready, its pictures counted) */
@@ -1274,7 +1276,7 @@ static void check_prompt(void) {
 
 /* ---- next episode: played straight away from the source most like the current one (same addon, resolution, HDR,
    audio, release group, debrid vs torrent); the art covers the switch. With no source at all: the title page's list ---- */
-static char closeVid[80];
+static char closeVid[SB_VID];
 static void play_stream(const Stream *s, const char *vid, double startAt);
 static void prepare(const char *vid, double startAt, int keepSubs);
 static int can_play(const Stream *s) { return !(s->p2p || !strncmp(s->url, "p2p://", 6)) || p2p_available(); } /* torrents need the engine library beside the app */
@@ -1313,7 +1315,7 @@ static unsigned nxTok;
    it (the closest to this one: likeness), its index read alone (no subtitles, nothing played) and 48 pictures made
    from it, only while this one has a good buffer (seekprev's prep); kept on this device, so the next episode opens
    with them. A torrent never. */
-static struct { char vid[80], key[300]; unsigned tok; int has, done, prepped; double bs, at; Stream best; MkvSession *m; } NP;
+static struct { char vid[SB_VID], key[300]; unsigned tok; int has, done, prepped; double bs, at; Stream best; MkvSession *m; } NP;
 static void np_stop(void) { if (NP.m || NP.prepped) sp_prepare(NULL, NULL); if (NP.m) { mkv_close(NP.m); NP.m = NULL; } NP.tok++; NP.has = NP.done = NP.prepped = 0; }
 static int likeness_to_this(const Stream *s) { __typeof__(P.nx) keep = P.nx; snprintf(P.nx.info, sizeof P.nx.info, "%s", P.sname); snprintf(P.nx.addon, sizeof P.nx.addon, "%s", P.saddon); snprintf(P.nx.url, sizeof P.nx.url, "%s", P.st.url[0] ? P.st.url : P.url); int v = likeness(s); P.nx = keep; return v; }
 static void np_part(StreamGroup *g, int gi, void *ud) { (void)gi;
@@ -1346,7 +1348,7 @@ static void nx_done(int total, void *ud) { (void)total; if (P.open && P.nx.tok &
 static void next_auto(void) {
   if (!P.next.has) { go_next(); return; }
   mark_watched(); save_progress(1);
-  char nv[80], info[700], url[SB_URL_MAX], addon[96], binge[96]; snprintf(nv, sizeof nv, "%s", P.next.vid); snprintf(info, sizeof info, "%s", P.sname); snprintf(url, sizeof url, "%s", P.st.url[0] ? P.st.url : P.url); snprintf(addon, sizeof addon, "%s", P.saddon); snprintf(binge, sizeof binge, "%s", P.st.binge);
+  char nv[SB_VID], info[700], url[SB_URL_MAX], addon[96], binge[96]; snprintf(nv, sizeof nv, "%s", P.next.vid); snprintf(info, sizeof info, "%s", P.sname); snprintf(url, sizeof url, "%s", P.st.url[0] ? P.st.url : P.url); snprintf(addon, sizeof addon, "%s", P.saddon); snprintf(binge, sizeof binge, "%s", P.st.binge);
   prepare(nv, 0, 0);
   snprintf(P.nx.vid, sizeof P.nx.vid, "%s", nv); snprintf(P.nx.info, sizeof P.nx.info, "%s", info); snprintf(P.nx.binge, sizeof P.nx.binge, "%s", binge); snprintf(P.nx.url, sizeof P.nx.url, "%s", url); snprintf(P.nx.addon, sizeof P.nx.addon, "%s", addon);
   set_status(T("Finding the closest source\xe2\x80\xa6")); P.nx.tok = ++nxTok; if (!P.nx.tok) P.nx.tok = ++nxTok; P.nx.until = now_() + 15;
@@ -1530,7 +1532,7 @@ static void src_rows(void) {
 static void src_choose(int i) {
   if (!src_focusable(i)) return; SRow r = SR.r[i];
   if (r.k == 6) { close_tray(); return; } /* (the one playing: nothing to change) */
-  int same = P.tray.kind == 2; char v[80]; snprintf(v, sizeof v, "%s", same ? P.vid : P.tray.epvid); Stream s = P.srcs.g[r.g].items[r.i]; play_stream(&s, v, same ? video_time() : 0);
+  int same = P.tray.kind == 2; char v[SB_VID]; snprintf(v, sizeof v, "%s", same ? P.vid : P.tray.epvid); Stream s = P.srcs.g[r.g].items[r.i]; play_stream(&s, v, same ? video_time() : 0);
 }
 /* an episode not aired yet (its date after today): nothing to give away, and no still to blur */
 static int ep_unaired(const cJSON *e) { const char *rel = js_str(e, "released", js_str(e, "firstAired", "")); int y, m, d; if (sscanf(rel, "%d-%d-%d", &y, &m, &d) != 3) return 0; time_t now = time(NULL); struct tm *t = localtime(&now); int today = (t->tm_year + 1900) * 10000 + (t->tm_mon + 1) * 100 + t->tm_mday; return y * 10000 + m * 100 + d > today; }
@@ -1999,8 +2001,8 @@ static void prepare(const char *vid, double startAt, int keepSubs) {
   if (again) { video_unload(); hls_conv_stop(); P.live = 0; asssubs_close(); if (mkv) { prevspike_stop(); sp_close(); mkv_close(mkv); mkv = NULL; } if (P.isP2p || P.resolving) p2p_player_switching(); } /* (another source inside the player: the torrent kept until the next one is known, p2p.c) */
   SubEntry *keep = NULL, *keepA = NULL; int nkeep = 0, nkeepA = 0; if (again && keepSubs && !strcmp(vid, P.vid)) { if (P.nExt) { keep = P.ext; nkeep = P.nExt; P.ext = NULL; } if (P.nAdx) { keepA = P.adx; nkeepA = P.nAdx; P.adx = NULL; } }
   cJSON *meta = P.meta; P.meta = NULL; subs_free(P.cues, P.ncues); free(P.ext); free(P.adx); srcs_free(); cols_clear();
-  char id[64]; snprintf(id, sizeof id, "%s", P.id); char name[256]; snprintf(name, sizeof name, "%s", P.name); char poster[512]; snprintf(poster, sizeof poster, "%s", P.poster); char bg[512]; snprintf(bg, sizeof bg, "%s", P.bg); char logo[512]; snprintf(logo, sizeof logo, "%s", P.logo); unsigned subReq = P.subReq, adxReq = P.adxReq;
-  char v[80]; snprintf(v, sizeof v, "%s", vid && *vid ? vid : id);
+  char id[SB_ID]; snprintf(id, sizeof id, "%s", P.id); char name[256]; snprintf(name, sizeof name, "%s", P.name); char poster[512]; snprintf(poster, sizeof poster, "%s", P.poster); char bg[512]; snprintf(bg, sizeof bg, "%s", P.bg); char logo[512]; snprintf(logo, sizeof logo, "%s", P.logo); unsigned subReq = P.subReq, adxReq = P.adxReq;
+  char v[SB_VID]; snprintf(v, sizeof v, "%s", vid && *vid ? vid : id);
   sync_stop(0); memset(&P, 0, sizeof P); sub_reset(); P.subReq = subReq; P.adxReq = adxReq; P.open = 1; P.openedAt = now_(); P.seekT = -1; P.curAud = -1; snprintf(P.curSub, sizeof P.curSub, "off");
   snprintf(P.type, sizeof P.type, "%s", type); snprintf(P.id, sizeof P.id, "%s", id); snprintf(P.vid, sizeof P.vid, "%s", v); if (aud_original_mode()) (void)tmdb_orig_lang(P.id); /* (Original audio: its language on its way while the film loads) */ snprintf(P.name, sizeof P.name, "%s", name); snprintf(P.poster, sizeof P.poster, "%s", poster); snprintf(P.bg, sizeof P.bg, "%s", bg); snprintf(P.logo, sizeof P.logo, "%s", logo);
   P.meta = meta; P.ext = keep; P.nExt = nkeep; P.adx = keepA; P.nAdx = nkeepA; P.startAt = startAt; aspect_load(); set_status("");
@@ -2090,7 +2092,7 @@ static void on_best_done(const Stream *s, const BestRate *r, void *ud) {
 }
 /* the logo the page showed (its own address, which can differ from the details' one: a translated logo, a board's):
    the player shows that very picture, already loaded, so it always flies in and is never drawn again */
-static char pageLogo[512], pageLogoId[64];
+static char pageLogo[512], pageLogoId[SB_ID];
 static void open_title(const char *type, const char *id) {
   if (bestTok) { best_choose_cancel(bestTok); bestTok = 0; }
   if (!P.open) { memset(&P, 0, sizeof P); sx_begin_quick(1); /* the page's logo moves into the player */
@@ -3273,7 +3275,7 @@ static void lc_logo(const char *u, float cx, float cy, float s, float a) {
 static char shN[256], shL[120]; static int shT, shF; static float ta; /* the pill's words as shown (they change only once faded out) */
 static void lc_reset(void) { shN[0] = shL[0] = 0; ta = 0; }
 static void live_card_draw(void) {
-  const LiveCard *c = live_card(); static float a; static Tween w; static char cur[512], prev[512], curId[64]; static double swapAt, popAt; static int wasTuning;
+  const LiveCard *c = live_card(); static float a; static Tween w; static char cur[512], prev[512], curId[SB_ID]; static double swapAt, popAt; static int wasTuning;
   float want = c->on && P.open && !P.closing && P.artA.v < 0.5f && growAt <= 0 && shrinkAt <= 0 ? 1 : 0; /* (and not while a preview grows: once it fills the screen) */ a += (want - a) * fminf(1, app_dt() * 8); /* (over the art: it says it there) */
   if (a < 0.01f || !c->it) { if (a < 0.01f) { cur[0] = prev[0] = curId[0] = 0; tween_set(&w, 0); wasTuning = 0; lc_reset(); } return; }
   const Item *it = c->it; double now = now_(); int rtl = app_rtl(); char ln[120];

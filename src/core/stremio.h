@@ -8,10 +8,14 @@
 #define CINEMETA "https://v3-cinemeta.strem.io"
 #define STREMIO_API "https://api.strem.io"
 
+/* the longest title id and video id kept (#81: an addon's 64-character event id lost its last character in 64 bytes,
+   and its streams were asked for under the cut id); a video id is the title's and ":season:episode" after it */
+#define SB_ID 128
+#define SB_VID 160
 /* a catalog entry / library card */
 typedef struct {
-  char id[64], type[16], name[256], poster[512], background[512], logo[512], description[1024], metaLine[96];
-  char videoId[80]; float progress, left; int cw;
+  char id[SB_ID], type[16], name[256], poster[512], background[512], logo[512], description[1024], metaLine[96];
+  char videoId[SB_VID]; float progress, left; int cw;
   int ep; char epName[256];      /* an episode card on a title page: its menu offers the streams */
   int newEp; double airAt;       /* Continue Watching: new episodes out since it was watched; Upcoming: when it airs */
 } Item;
@@ -76,7 +80,7 @@ cJSON *lib_get(const char *id);         /* the account's item or NULL (belongs t
 int  lib_has(const char *id);           /* in the Library (not removed) */
 void lib_toggle(const Item *it);
 int  lib_cw_items(ItemList *out);       /* Continue Watching, newest first */
-typedef struct { char vid[80]; float pct, leftMin; } CwInfo;
+typedef struct { char vid[SB_VID]; float pct, leftMin; } CwInfo;
 int  lib_cw_info(const Item *it, CwInfo *out);
 float lib_trakt_resume(const char *id, const char *vid); /* Trakt's pause of that video, the newer than the library's: where (0..1), 0 none */
 int  lib_item_watched(const Item *it);  /* the badge */

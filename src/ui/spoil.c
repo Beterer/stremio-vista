@@ -16,7 +16,7 @@
 int spoil_mode(void) { const char *m = store_get("spoilers", "off"); return !strcmp(m, "hide") ? 2 : !strcmp(m, "blur") ? 1 : 0; }
 
 /* the episodes shown clear on request (OK on one), each with when: its blur fades off and its eye goes */
-static struct { char vid[80]; double at; } shown[32]; static int nshown;
+static struct { char vid[SB_VID]; double at; } shown[32]; static int nshown;
 void spoil_reveal(const char *vid) { if (!vid || !*vid) return; for (int i = 0; i < nshown; i++) if (!strcmp(shown[i].vid, vid)) return; int k = nshown < 32 ? nshown++ : 31; snprintf(shown[k].vid, sizeof shown[k].vid, "%s", vid); shown[k].at = app_now(); }
 void spoil_forget(void) { nshown = 0; }
 void spoil_reveal_wait(const char *vid) { if (!vid) return; for (int i = 0; i < nshown; i++) if (!strcmp(shown[i].vid, vid) && app_now() - shown[i].at < 0.55) shown[i].at = app_now(); } /* (its clear still not in yet: the blur holds) */

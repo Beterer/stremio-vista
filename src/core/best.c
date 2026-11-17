@@ -521,7 +521,7 @@ static unsigned long long skipped[24]; static int nSkipped;
 static unsigned long long url_hash(const char *u) { unsigned long long h = 1469598103934665603ull; for (; *u; u++) { h ^= (unsigned char)*u; h *= 1099511628211ull; } return h; }
 void best_skip(const char *url) { if (url && *url) skipped[nSkipped++ % 24] = url_hash(url); }
 static int was_skipped(const Stream *s) { unsigned long long h = url_hash(s->url); for (int i = 0; i < nSkipped && i < 24; i++) if (skipped[i] == h) return 1; return 0; }
-static struct { unsigned tok; int on, done, fin, wait, said3, t12, t30, dur; double t0; char type[16], vid[80]; Stream *all; int n, cap; BestStatusCb status; BestDoneCb cb; void *ud; } F;
+static struct { unsigned tok; int on, done, fin, wait, said3, t12, t30, dur; double t0; char type[16], vid[SB_VID]; Stream *all; int n, cap; BestStatusCb status; BestDoneCb cb; void *ud; } F;
 static void flow_end(void) { F.on = 0; free(F.all); F.all = NULL; F.n = F.cap = 0; }
 static void say(void) {
   if (!F.on || F.fin || !F.status) return; int slow = F.wait > 0 && app_now() - F.t0 > 2.8; char t[256], n[16]; /* only when it takes a while: some addons are slow */

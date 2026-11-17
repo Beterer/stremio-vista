@@ -12,7 +12,7 @@
 #include <string.h>
 
 #define NC 3 /* copies tried at most, best first */
-static struct { char type[16], id[80], vid[80], film[SB_URL_MAX]; unsigned tok; int phase, nc, ci, durMin, hold; Stream c[NC]; double sc[NC]; MkvSession *m; double at, makeAt, filmSize; char key[300]; } PS;
+static struct { char type[16], id[SB_ID], vid[SB_VID], film[SB_URL_MAX]; unsigned tok; int phase, nc, ci, durMin, hold; Stream c[NC]; double sc[NC]; MkvSession *m; double at, makeAt, filmSize; char key[300]; } PS;
 /* phase 0 idle, 1 asking the addons, 2 reading a copy's index, 3 the copy makes pictures, 4 none to use */
 
 static int has_w(const char *l, const char *w) { size_t n = strlen(w); for (const char *p = strstr(l, w); p; p = strstr(p + 1, w)) { int a = p == l || !isalnum((unsigned char)p[-1]), b = !isalnum((unsigned char)p[n]); if (a && b) return 1; } return 0; }

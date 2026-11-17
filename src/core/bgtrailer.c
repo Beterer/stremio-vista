@@ -10,7 +10,7 @@
 
 enum { S_OFF, S_META, S_FIND, S_LOAD, S_SHOW, S_GONE };
 static BgtHooks H; static int st, idleOn; static unsigned gen, tok;
-static double lastCheck, hiddenAt, memAt, loadAt; static char tid[64], ttype[16];
+static double lastCheck, hiddenAt, memAt, loadAt; static char tid[SB_ID], ttype[16];
 static char down[2][2048]; static int nDown, iDown; /* the lower MP4s still to fall back to (720p, then 480p) */
 static double now_s(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec + t.tv_nsec / 1e9; }
 
