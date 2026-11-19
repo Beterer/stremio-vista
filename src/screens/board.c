@@ -128,6 +128,7 @@ static void refresh_cw(Board *b) {
   else if (r->col >= cw.n) r->col = cw.n ? cw.n - 1 : 0;
   slide_row(r);
 
+  if (cw.n && b->rowIdx > 0 && b->rowIdx < b->n && b->rows[b->rowIdx].hidden) b->rowIdx = 0;
   if (b->rowIdx == 0) {
     if (!cw.n && b->n > 1) {
       int next = first_visible_row(b, 1, 1);
@@ -722,7 +723,11 @@ int board_saver_items(Item *out, int max) {
   int n = 0; Board *d = &boards[1];
   #define TAKE(it) do { const Item *x_ = (it); char bu_[512]; int dup_ = 0; if (!x_->id[0] || n >= max) break; for (int q_ = 0; q_ < n; q_++) if (!strcmp(out[q_].id, x_->id)) dup_ = 1; if (!dup_ && sb_bg_mid(x_, bu_, sizeof bu_)[0]) out[n++] = *x_; } while (0)
   for (int j = 0; j < d->nfeat && j < 6; j++) TAKE(&d->feat[j]);
-  for (int bi = 0; bi < 2; bi++) { Board *b = &boards[bi]; for (int r = 0; r < b->n && r < 4; r++) for (int j = 0; j < b->rows[r].items.n && j < 6; j++) TAKE(&b->rows[r].items.items[j]); }
+  for (int bi = 0; bi < 2; bi++) {
+    Board *b = &boards[bi]; int first = bi == 0 && b->n && b->rows[0].hidden ? 1 : 0;
+    for (int r = first; r < b->n && r < first + 4; r++)
+      for (int j = 0; j < b->rows[r].items.n && j < 6; j++) TAKE(&b->rows[r].items.items[j]);
+  }
   #undef TAKE
   return n;
 }

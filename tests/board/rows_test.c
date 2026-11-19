@@ -116,6 +116,11 @@ int main(void) {
   reset(); cwCount = 0; discCount = 2; load_catalog_rows(b, 0, 0);
   reply(1, "second-first"); assert(b->rowIdx == 1); b->heroPending = 0;
   reply(0, NULL); assert(b->rowIdx == 2 && b->heroPending);
+  reset(); cwCount = 0; discCount = 2; board_update_rows(b);
+  reply(0, NULL); reply(1, NULL);
+  cwCount = 1; board_refresh_quiet();
+  const Item *selected = focused_of(b);
+  assert(selected && !strcmp(selected->id, "resume0"));
   reset(); discCount = 100; load_catalog_rows(b, 0, 0);
   for (int i = 0; i < 4; i++) reply(i, "ready"); b->rowIdx = 88; load_catalog_rows(b, 0, 1);
   reply(4, "restored"); reply(5, NULL); reply(6, NULL); catalogs_ahead(b);
