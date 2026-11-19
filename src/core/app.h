@@ -45,7 +45,7 @@ extern void (*app_play_hook)(const Stream *s, const char *type, const char *id, 
 void app_play(const Stream *s, const char *type, const char *id, const char *vid, int fromStart);
 void app_play_from_start(const Item *it);
 void app_open_external(const char *url, const char *name);  /* an addon's outside link: a stremio:///detail page here, else a code for the phone */
-void app_refresh_boards(void);        /* the library changed: the boards rebuild */
+void app_refresh_boards(void);        /* the library changed: refresh Continue Watching */
 extern int app_splash_done;
 void app_reveal_start(void);                        /* first launch: the page rises in once the splash goes */
 float app_reveal_x(float delay, float dur);         /* 0..1 of that entrance for a block with this delay (1 when none runs) */

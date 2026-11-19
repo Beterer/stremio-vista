@@ -91,12 +91,51 @@ static void slide_row(Row *r) {
   tween_to(&r->off, off, 0.18f, EASE_ROW);
   if (r->popCol != r->col) { r->popCol = r->col; focus_pop(&r->pop); } /* the floating copy pops on every move */
 }
-static void board_cw_row(Board *b) {
-  ItemList cw; if (lib_cw_items(&cw) > 0) { Row *r = row_add(b, "Continue Watching", 1, 0); if (r) { r->items = cw; r->hidden = 0; } else itemlist_clear(&cw); } else itemlist_clear(&cw);
-}
 /* a catalog answer finds its row through a packed token (board, row, generation): nothing to free */
 static void *tok(Board *b, int row) { return (void *)(uintptr_t)(((uintptr_t)(b - boards) << 28) | ((uintptr_t)(b->gen & 0xfff) << 16) | (uintptr_t)row); }
 static int first_visible_row(Board *b, int from, int dir);
+
+static int find_item(const ItemList *list, const Item *it) {
+  for (int i = 0; i < list->n; i++) if (!strcmp(list->items[i].id, it->id) && !strcmp(list->items[i].type, it->type)) return i;
+  return -1;
+}
+
+static void refresh_cw(Board *b) {
+  b->libVer = lib_version();
+  if (!b->n) return;
+  Row *r = &b->rows[0];
+  ItemList cw = {0}; lib_cw_items(&cw);
+  if (cw.n == r->items.n && (!cw.n || !memcmp(cw.items, r->items.items, (size_t)cw.n * sizeof *cw.items))) {
+    itemlist_clear(&cw);
+    return;
+  }
+
+  int selected = r->col < r->items.n ? find_item(&cw, &r->items.items[r->col]) : -1;
+  b->remAt = 0;
+  if (cw.n == r->items.n - 1) {
+    for (int i = 0; i < r->items.n; i++) if (find_item(&cw, &r->items.items[i]) < 0) {
+      b->remIt = r->items.items[i]; b->remRow = 0; b->remIdx = i; b->remAt = app_now();
+      break;
+    }
+  }
+  r->closing = !cw.n && b->remAt > 0;
+  r->closeAt = b->remAt;
+  r->hk = 1;
+  r->hidden = !cw.n && !r->closing;
+  row_clear(r);
+  r->items = cw;
+  if (selected >= 0) r->col = selected;
+  else if (r->col >= cw.n) r->col = cw.n ? cw.n - 1 : 0;
+  slide_row(r);
+
+  if (b->rowIdx == 0) {
+    if (!cw.n && b->n > 1) {
+      int next = first_visible_row(b, 1, 1);
+      b->rowIdx = next >= 0 ? next : 1;
+    }
+    b->heroAt = app_now(); b->heroPending = 1;
+  }
+}
 /* -2 means this neighbor is still loading: do not jump over it to a distant row or navigation. */
 static int browse_next_row(Board *b, int from, int dir) {
   for (int i = from; i >= 0 && i < b->n; i += dir) {
@@ -145,23 +184,25 @@ static void catalogs_ahead(Board *b) {
 static void load_catalog_rows(Board *b, int disc, int keep) {
   int oldRow = b->rowIdx, oldN = b->n, *oldCols = keep && oldN ? malloc((size_t)oldN * sizeof *oldCols) : NULL;
   if (oldCols) for (int i = 0; i < oldN; i++) oldCols[i] = b->rows[i].col;
-  Item *was = NULL; int nwas = 0; /* Continue Watching as it was, to find one taken out of it */
-  if (keep && !disc && b->n && !strcmp(b->rows[0].title, "Continue Watching") && b->rows[0].items.n) { nwas = b->rows[0].items.n; was = malloc(sizeof(Item) * (size_t)nwas); if (was) memcpy(was, b->rows[0].items.items, sizeof(Item) * (size_t)nwas); else nwas = 0; }
   for (int i = 0; i < b->n; i++) row_clear(&b->rows[i]); b->n = 0; b->gen++;
-  if (!disc) board_cw_row(b);
-  if (was) { Row *r = b->n && !strcmp(b->rows[0].title, "Continue Watching") ? &b->rows[0] : NULL;
-    if (r && r->items.n == nwas - 1) for (int i = 0; i < nwas; i++) { int in = 0; for (int j = 0; j < r->items.n && !in; j++) in = !strcmp(r->items.items[j].id, was[i].id);
-      if (!in) { b->remIt = was[i]; b->remRow = 0; b->remIdx = i; b->remAt = app_now(); break; } }
-    if (!r && nwas == 1) { Row *z = row_add(b, "Continue Watching", 1, 0); /* its last title taken out: the row stays a moment, the title fading and shrinking in it, then closes as the rows under it move up */
-      if (z) { z->hidden = 0; z->closing = 1; z->closeAt = app_now(); z->hk = 1; b->remIt = was[0]; b->remRow = (int)(z - b->rows); b->remIdx = 0; b->remAt = app_now(); } }
-    free(was); }
+  b->remAt = 0;
+  /* Keep a slot even when Continue Watching is empty so catalog replies still address
+     the same rows when viewing history changes. */
+  if (!disc) {
+    if (!row_add(b, "Continue Watching", 1, 0)) { b->rowIdx = 0; free(oldCols); return; }
+    refresh_cw(b);
+    if (oldCols && b->rows[0].items.n) {
+      Row *r = &b->rows[0];
+      r->col = oldCols[0] < r->items.n ? oldCols[0] : r->items.n - 1;
+    }
+  }
   /* Home shares Discover's catalogs, with its Continue Watching row above them. */
   int nd = sb_disc_defs(NULL, 0); CatalogDef *defs = nd > 0 ? calloc((size_t)nd, sizeof *defs) : NULL;
   if (defs) nd = sb_disc_defs(defs, nd); else nd = 0;
   for (int d = 0; d < nd; d++) { Row *r = row_add(b, defs[d].title, 0, 0); if (!r) break; int ri = (int)(r - b->rows); if (oldCols && ri < oldN) r->col = oldCols[ri]; r->def = defs[d]; r->hasDef = 1; }
   free(defs); free(oldCols);
-  if (keep) { b->rowIdx = oldRow < b->n ? oldRow : (b->n ? b->n - 1 : 0); if (b->rowIdx < b->n && b->rows[b->rowIdx].closing) { int nx = first_visible_row(b, b->rowIdx + 1, 1); if (nx >= 0) b->rowIdx = nx; } /* (never on the row closing) */ for (int j = 0; j < b->n; j++) { Row *r = &b->rows[j]; if (r->items.n && r->col >= r->items.n) r->col = r->items.n - 1; } }
-  else b->rowIdx = 0;
+  b->rowIdx = keep && oldRow < b->n ? oldRow : 0;
+  if (!disc && b->rowIdx == 0 && b->n > 1 && b->rows[0].hidden) b->rowIdx = 1;
   catalogs_ahead(b);
 }
 /* ---- the spotlight's own picks: this year's new films and the trending series, alternating (not the first row again) ---- */
@@ -205,10 +246,10 @@ static Item *item_at(Board *b, int row, int col) {
   if (row == SPOT_ROW) return col < b->nfeat ? &b->feat[col] : NULL;
   if (row < 0 || row >= b->n || col >= b->rows[row].items.n) return NULL; return &b->rows[row].items.items[col];
 }
-typedef struct { Board *board; unsigned gen; int row, col; } MetaTarget;
+typedef struct { Board *board; unsigned gen; int row, col; char id[sizeof ((Item *)0)->id]; } MetaTarget;
 static void on_meta(cJSON *m, void *ud) {
   MetaTarget target = *(MetaTarget *)ud; free(ud); Board *b = target.board; int row = target.row, col = target.col;
-  if (!m || b->gen != target.gen) return; Item *it = item_at(b, row, col); if (!it) return;
+  if (!m || b->gen != target.gen) return; Item *it = item_at(b, row, col); if (!it || strcmp(it->id, target.id)) return;
   if (!it->description[0]) { const char *d = cJSON_GetStringValue(cJSON_GetObjectItem(m, "description")); if (d) snprintf(it->description, sizeof it->description, "%s", d); }
   /* the details' facts are what the title page shows (a catalog can list a series' total running time where the
      details give an episode's): the line follows them, keeping the catalog's rating when the details have none */
@@ -217,7 +258,7 @@ static void on_meta(cJSON *m, void *ud) {
   if (b->heroSet && !strcmp(b->hero.id, it->id)) { snprintf(b->hero.description, sizeof b->hero.description, "%s", it->description); snprintf(b->hero.metaLine, sizeof b->hero.metaLine, "%s", it->metaLine); b->heroVer++; }
 }
 static void meta_ask(Board *b, int row, int col) { Item *it = item_at(b, row, col); if (!it || !it->id[0]) return; /* (the details also when the catalog gave words: their facts are the title page's) */
-  MetaTarget *target = malloc(sizeof *target); if (!target) return; *target = (MetaTarget){ b, b->gen, row, col }; sb_meta(it->type, it->id, on_meta, target); }
+  MetaTarget *target = malloc(sizeof *target); if (!target) return; *target = (MetaTarget){ .board = b, .gen = b->gen, .row = row, .col = col }; snprintf(target->id, sizeof target->id, "%s", it->id); sb_meta(it->type, it->id, on_meta, target); }
 static void logo_src(const Item *it, char *out, size_t cap) { const TmdbLoc *L = tmdb_loc(it->type, it->id, 1); if (L && L->logo && L->logo[0]) snprintf(out, cap, "%s", L->logo); else sb_logo_of(it, out, cap); }
 /* the text art of the titles the hero may show next, asked for well before (at the exact size it is drawn: one
    decode, ready when the hero changes): every spotlight title, and the cards around the focus in its row and the
@@ -404,13 +445,25 @@ static void hero_draw(Board *b) {
 }
 
 /* ---- the screen ---- */
+static float board_scroll_y(Board *b) {
+  float y = 0;
+  if (focusOn(b)) for (int i = 0; i < b->rowIdx; i++) if (!b->rows[i].hidden) y -= row_h(&b->rows[i]);
+  return y;
+}
+
+static void board_update_rows(Board *b) {
+  if (!b->built) {
+    b->built = 1;
+    load_catalog_rows(b, b->kind == 1, b->n > 0);
+  } else if (b->kind == 0 && b->libVer != lib_version()) refresh_cw(b);
+}
+
 static void board_enter_k(Board *b) {
-  int fresh = !b->built || (b->kind == 0 && b->libVer != lib_version()), keep = b->n > 0;
-  if (fresh) { b->built = 1; b->libVer = lib_version(); load_catalog_rows(b, b->kind == 1, keep); }
+  board_update_rows(b);
   if (b->kind == 1) { feat_fill(b); feat_arm(b); if (spotOn(b) && (b->nfeat > 0 || b->featLoad)) { tween_set(&b->spotY, 144); tween_set(&b->rowsA, 0.5f); } } /* arriving on the spotlight: the rows start where they will rest (no slide down after) */
   if (app_splash_done) timer_start(&b->fade, 0.5f); /* every switch to this tab: the rows rise in one after another (row_in) */
   for (int i = 0; i < b->n; i++) { slide_row(&b->rows[i]); tween_set(&b->rows[i].off, b->rows[i].off.to); }
-  tween_set(&b->hostY, 0); b->fastBg = 1; hero_soon(b, 70);
+  tween_set(&b->hostY, board_scroll_y(b)); b->fastBg = 1; hero_soon(b, 70);
 }
 static void board_leave(void) {
   for (int i = 0; i < 2; i++) { Board *b = &boards[i]; if (cur() == b) continue; /* another board: the last title leaves at once (its own will fade in) */
@@ -489,8 +542,7 @@ static void board_tick(float dt) {
   /* the rows above the focused one scroll out of the way and fade as they go (0.14 s); only the focused row and
      the next one are shown, a row coming into view fades in (0.28 s) */
   int fo = focusOn(b), vi = fo ? b->rowIdx : first_visible_row(b, 0, 1); if (vi < 0) vi = 0;
-  float y = 0; if (fo) for (int i = 0; i < b->rowIdx; i++) if (!b->rows[i].hidden) y += row_h(&b->rows[i]);
-  tween_to(&b->hostY, -y, 0.22f, EASE_ROW); tween_tick(&b->hostY, dt);
+  tween_to(&b->hostY, board_scroll_y(b), 0.22f, EASE_ROW); tween_tick(&b->hostY, dt);
   int nx = first_visible_row(b, vi + 1, 1);
   for (int i = 0; i < b->n; i++) { Row *r = &b->rows[i]; if (r->closing) { float k = (float)((app_now() - r->closeAt) / 0.45); if (k >= 1) { r->closing = 0; r->hidden = 1; r->hk = 1; } else r->hk = 1 - ease_apply(EASE_CSS_EASE, k); }
     tween_tick(&r->off, dt); focus_tick(&r->pop, dt); nudge_tick(&r->nudge, dt);
@@ -691,9 +743,8 @@ void board_rebuild(void) {
   if (saved) for (int i = 0; i < n; i++) { Row *r = &b->rows[i]; saved[i].id = strdup(r->hasDef ? r->def.url : r->title); saved[i].col = r->col; }
   b->built = 1; b->libVer = lib_version();
   load_catalog_rows(b, b->kind == 1, 0);
-  b->rowIdx = 0;
   for (int j = 0; j < b->n; j++) { Row *r = &b->rows[j];
-    if (saved) for (int i = 0; i < n; i++) if (saved[i].id && !strcmp(saved[i].id, r->hasDef ? r->def.url : r->title)) { r->col = saved[i].col; if (r->items.n && r->col >= r->items.n) r->col = r->items.n - 1; if (i == ri) b->rowIdx = j; break; } }
+    if (saved) for (int i = 0; i < n; i++) if (saved[i].id && !strcmp(saved[i].id, r->hasDef ? r->def.url : r->title)) { r->col = saved[i].col; if (r->items.n && r->col >= r->items.n) r->col = r->items.n - 1; if (i == ri && (r->hasDef || !r->hidden)) b->rowIdx = j; break; } }
   if (saved) { for (int i = 0; i < n; i++) free(saved[i].id); free(saved); }
   catalogs_ahead(b);
   for (int i = 0; i < b->n; i++) { slide_row(&b->rows[i]); tween_set(&b->rows[i].off, b->rows[i].off.to); }
@@ -702,7 +753,7 @@ void board_rebuild(void) {
 void board_refresh_current(void) { Board *b = cur(); if (b) { b->built = 0; board_enter_k(b); } }
 /* the library changed under the page (watched, added, removed): its rows take the change in place, nothing replays (the
    card that changed says so itself) */
-void board_refresh_quiet(void) { Board *b = cur(); if (!b) return; b->built = 1; b->libVer = lib_version(); load_catalog_rows(b, b->kind == 1, b->n > 0); }
+void board_refresh_quiet(void) { Board *b = cur(); if (b == &boards[0] && b->built && b->libVer != lib_version()) refresh_cw(b); }
 Screen homeScreen = { enter_home, NULL, key_home, board_tick, board_draw, focused_cur, NULL, NULL, board_origin };
 Screen discScreen = { enter_disc, NULL, key_disc, board_tick, board_draw, focused_cur, NULL, NULL, board_origin };
 __attribute__((constructor)) static void board_kinds(void) { boards[0].kind = 0; boards[1].kind = 1; boards[1].featOn = 1; tween_set(&boards[1].rowsA, 1); for (int i = 0; i < 2; i++) tween_set(&boards[i].logoIn, 1); } /* Discover opens on its spotlight */

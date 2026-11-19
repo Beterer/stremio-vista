@@ -7,6 +7,7 @@ TopNav topNav;
 static int cwCount, discCount = 2, pendingCount;
 static struct { CatalogDef def; void (*cb)(ItemList *, int, void *); void *ud; } pending[256];
 double app_now(void) { return 10; }
+unsigned lib_version(void) { return (unsigned)cwCount; }
 void focus_pop(FocusPop *f) { (void)f; }
 void itemlist_clear(ItemList *l) { free(l->items); memset(l, 0, sizeof *l); }
 void itemlist_free(ItemList *l) { itemlist_clear(l); free(l); }
@@ -39,7 +40,35 @@ static void reset(void) {
   free(boards[0].rows);
   memset(&boards[0], 0, sizeof boards[0]); pendingCount = 0;
 }
+static void library_refresh_keeps_catalog_page(void) {
+  Board *b = &boards[0];
+  cwCount = 1; discCount = 2; board_update_rows(b);
+  reply(0, "first"); reply(1, "next-row");
+  Row *r = &b->rows[1];
+  ItemList *page = calloc(1, sizeof *page);
+  page->n = page->total = 10;
+  page->items = calloc((size_t)page->n, sizeof *page->items);
+  for (int i = 0; i < page->n; i++) snprintf(page->items[i].id, sizeof page->items[i].id, "page-%d", i);
+  r->paging = 1;
+  on_page(page, 1, tok(b, 1));
+  b->rowIdx = 1; r->col = 9;
+  slide_row(r); tween_set(&r->off, r->off.to);
+  float offset = r->off.v;
+
+  SCR = SCR_DETAIL;
+  cwCount = 2;
+  board_refresh_quiet();
+  SCR = SCR_HOME;
+  board_update_rows(b);
+  const Item *selected = focused_of(b);
+  assert(selected && !strcmp(selected->id, "page-8"));
+  assert(r->off.v == offset && r->items.n == 11);
+  assert(!strcmp(r->items.items[10].id, "page-9") && !b->rows[2].hidden);
+  assert(b->rows[0].items.n == 2);
+  reset();
+}
 int main(void) {
+  library_refresh_keeps_catalog_page();
   Board *b = &boards[0];
   cwCount = 2; load_catalog_rows(b, 0, 0);
   assert(b->n == 3 && b->rows[0].wide && b->rows[0].items.n == 2);
@@ -52,10 +81,16 @@ int main(void) {
   assert(b->rows[1].more && !b->rows[1].hidden);
 
   /* A reply sent before Continue Watching disappears must not land in a shifted row. */
-  cwCount = 0; load_catalog_rows(b, 0, 0);
-  assert(b->n == 2 && !strcmp(b->rows[0].title, "Discover 0"));
-  reply(1, "stale"); assert(b->rows[0].items.n == 0 && b->rows[1].items.n == 0);
-  reply(2, "fresh"); assert(!strcmp(b->rows[0].items.items[0].id, "fresh"));
+  cwCount = 0; refresh_cw(b);
+  reply(1, "next"); assert(!strcmp(b->rows[2].items.items[0].id, "next"));
+  assert(b->rows[0].hidden && b->rowIdx == 1);
+  assert(!strcmp(b->rows[1].items.items[0].id, "movie"));
+
+  /* A reply from a replaced catalog generation is still ignored. */
+  load_catalog_rows(b, 0, 0);
+  assert(b->n == 3 && b->rows[0].hidden && !strcmp(b->rows[1].title, "Discover 0"));
+  reply(1, "stale"); assert(b->rows[2].items.n == 0);
+  reply(2, "fresh"); assert(!strcmp(b->rows[1].items.items[0].id, "fresh"));
 
   reset(); cwCount = 1; discCount = 12; load_catalog_rows(b, 0, 0);
   assert(b->n == 13 && pendingCount == 4);
@@ -75,17 +110,17 @@ int main(void) {
   reply(10, "before-two"); reply(8, "restored");
   assert(b->rowIdx == 88 && browse_next_row(b, 87, -1) == 87);
   reset(); cwCount = 1; discCount = 2; load_catalog_rows(b, 0, 0);
-  cwCount = 0; load_catalog_rows(b, 0, 1); assert(b->rows[0].closing);
+  cwCount = 0; refresh_cw(b); assert(b->rows[0].closing);
   b->rows[0].closing = 0; b->rows[0].hidden = 1; /* the response arrives after the close animation */
-  reply(2, "after-history"); assert(b->rowIdx == 1);
+  reply(0, "after-history"); assert(b->rowIdx == 1);
   reset(); cwCount = 0; discCount = 2; load_catalog_rows(b, 0, 0);
-  reply(1, "second-first"); assert(b->rowIdx == 0); b->heroPending = 0;
-  reply(0, NULL); assert(b->rowIdx == 1 && b->heroPending);
+  reply(1, "second-first"); assert(b->rowIdx == 1); b->heroPending = 0;
+  reply(0, NULL); assert(b->rowIdx == 2 && b->heroPending);
   reset(); discCount = 100; load_catalog_rows(b, 0, 0);
   for (int i = 0; i < 4; i++) reply(i, "ready"); b->rowIdx = 88; load_catalog_rows(b, 0, 1);
   reply(4, "restored"); reply(5, NULL); reply(6, NULL); catalogs_ahead(b);
-  assert(!strcmp(pending[8].def.title, "Discover 85"));
+  assert(!strcmp(pending[8].def.title, "Discover 84"));
   reply(8, "previous"); assert(browse_next_row(b, 87, -1) == 85);
-  reset(); puts("board rows: Continue Watching first, account order, empty history, stale replies and 100 catalogs passed");
+  reset(); puts("board rows: catalog focus after library changes, account order, empty history, stale replies and 100 catalogs passed");
   return 0;
 }
