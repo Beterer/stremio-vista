@@ -871,7 +871,7 @@ static void key_dispatch(int k, int repeat) {
   if (screens[SCR] && screens[SCR]->key) screens[SCR]->key(k);
 }
 void app_text(const char *utf8) { idle_touch(); if (app_overlay && app_overlay->text) app_overlay->text(utf8); else if (screens[SCR] && screens[SCR]->text) screens[SCR]->text(utf8); }
-void app_refresh_boards(void) { extern void board_invalidate(void); extern void board_refresh_quiet(void); board_invalidate(); if (app_is_board(SCR)) board_refresh_quiet(); } /* in place: no row replays its entrance */
+void app_refresh_boards(void) { board_refresh_quiet(); }
 void app_init(void) {
   vig_tex(0); vig_tex(1); /* both shadings made at start: the first title page would make its own mid-zoom */
   topNav.want = -1; NOW = SDL_GetTicks() / 1000.0; lastIn = NOW; lastNav = NOW; bgMode = 0; tween_set(&toastA, 0);
