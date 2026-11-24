@@ -38,9 +38,9 @@ static const char *PK[] = { "Search on TV", "Search on your TV", "What you type 
   "Titles and descriptions", "Titles and descriptions in your language", "Paste your TMDB API key (or API Read Access Token). Get one at", "It stays on your TV.",
   "API key", "Save", "Checking\xe2\x80\xa6", "Saved. You can close this page.", "TMDB didn\xe2\x80\x99t accept this key.",
   "Ratings and reviews", "Ratings and reviews from Trakt", "Paste your Trakt Client ID. To get one:", "open", "sign in, then Settings \xe2\x80\xba Your API Apps \xe2\x80\xba New Application. Any name; as the redirect URI paste",
-  "then Save and copy the Client ID.", "Client ID", "Trakt didn\xe2\x80\x99t accept this id." };
+  "then Save and copy the Client ID.", "Client ID", "Trakt didn\xe2\x80\x99t accept this id.", "This code has changed. Scan the code on your TV again." };
 #define NPK (int)(sizeof PK / sizeof PK[0])
-static struct { char lang[4]; int rtl; char *t[NPK]; } str;
+static struct { char lang[8]; int rtl; char *t[NPK]; } str;
 
 static double mono(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return ts.tv_sec + ts.tv_nsec / 1e9; }
 static void make_token(void) {
@@ -94,6 +94,8 @@ static void head(Buf *b, const char *title) {
     ".go #w{animation:up .7s cubic-bezier(.3,.7,.3,1)}@keyframes up{0%{transform:none;opacity:1}45%{transform:translateY(-14vh) scale(1.06);opacity:.55}100%{transform:none;opacity:1}}"
     "</style></head><body><div id=\"w\"><div class=\"g\" id=\"g1\"></div><div class=\"g\" id=\"g2\"></div></div>");
 }
+static void stale_page(Buf *b) { /* an old code (the app started again since), or a mistyped address: say so, not a bare error */
+  head(b, pt("Search on TV")); b_s(b, "<h1>"); hx(b, pt("This code has changed. Scan the code on your TV again.")); b_s(b, "</h1></body></html>"); }
 static void search_page(Buf *b) {
   head(b, pt("Search on TV")); b_s(b, "<h1>"); hx(b, pt("Search on your TV")); b_s(b, "</h1><p>"); hx(b, pt("What you type shows up on the TV as you type.")); b_s(b, "</p>");
   b_s(b, "<input id=\"q\" autofocus autocomplete=\"off\" placeholder=\""); hx(b, pt("Film or series")); b_s(b, "\"><small id=\"s\"></small><script>"
@@ -167,7 +169,7 @@ static void handle(int fd) {
   if (!strncmp(target, "/t/", 3) && strlen(target) >= 19 && !strncmp(target + 3, tok, 16)) {
     rest = target + 19;
     if (*rest && strcmp(rest, "/q") && strcmp(rest, "/tmdb") && strcmp(rest, "/tmdb/set") && strcmp(rest, "/trakt") && strcmp(rest, "/trakt/set")) rest = NULL; }
-  if (!rest) { reply(fd, 404, NULL, NULL, 0); return; }
+  if (!rest) { if (!strncmp(target, "/t/", 3) || !strcmp(target, "/")) { Buf b = { 0 }; pthread_mutex_lock(&mu); stale_page(&b); pthread_mutex_unlock(&mu); reply(fd, 404, "Content-Type: text/html; charset=utf-8\r\n", b.p, b.n); free(b.p); } else reply(fd, 404, NULL, NULL, 0); return; }
   if (strcmp(rest, "/q") && strcmp(rest, "/tmdb/set") && strcmp(rest, "/trakt/set")) { pthread_mutex_lock(&mu); hits++; pthread_mutex_unlock(&mu); } /* a code was opened */
   if (!strcmp(rest, "/tmdb/set") || !strcmp(rest, "/trakt/set")) {
     char key[1024]; qparam(q, "key", key, sizeof key);
@@ -244,7 +246,7 @@ int httpd_start(void) {
   deadline = mono() + IDLE_SEC; stopReq = 0;
   if (alive) { pthread_mutex_unlock(&mu); return 1; } /* on already (or still closing: it stays) */
   pthread_mutex_unlock(&mu);
-  int fd = listen_on(); if (fd < 0) { fprintf(stderr, "[httpd] port %d: %s\n", HTTPD_PORT, strerror(errno)); return 0; }
+  int fd = listen_on(); if (fd < 0) { fprintf(stderr, "[httpd] ports %d-%d: %s\n", HTTPD_PORT, HTTPD_PORT + 9, strerror(errno)); return 0; }
   pthread_mutex_lock(&mu); alive = 1; pthread_mutex_unlock(&mu);
   pthread_t t; pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED); pthread_attr_setstacksize(&at, 128 * 1024);
   int bad = pthread_create(&t, &at, srv_main, (void *)(size_t)fd); pthread_attr_destroy(&at);
@@ -268,7 +270,7 @@ static int lan_ip(char *out, size_t cap) {
   for (i = ifs; i; i = i->ifa_next) {
     if (!i->ifa_addr || i->ifa_addr->sa_family != AF_INET || (i->ifa_flags & (IFF_LOOPBACK | IFF_POINTOPOINT)) || !(i->ifa_flags & IFF_UP)) continue;
     struct in_addr a = ((struct sockaddr_in *)i->ifa_addr)->sin_addr; unsigned h = ntohl(a.s_addr);
-    if ((h >> 16) == 0xa9fe || h == 0) continue;
+    if ((h >> 16) == 0xa9fe || (h >> 8) == 0xc0a831 || h == 0) continue;
     int local = (h >> 24) == 10 || (h >> 20) == 0xac1 || (h >> 16) == 0xc0a8;
     int rank = a.s_addr == route.s_addr ? 3 : local ? 2 : 1;
     if (rank > best && inet_ntop(AF_INET, &a, out, (socklen_t)cap)) best = rank;

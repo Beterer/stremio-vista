@@ -1,6 +1,6 @@
 #!/bin/bash
 # A release in one step:  tools/release.sh VERSION [site-dir]
-# Sets the version (pkg/appinfo.json and the What's new card, which must match), builds the IPK
+# Sets the version (pkg/appinfo.json; the What's new card keeps its own: a new card, a new card version), builds the IPK
 # (tools/package.sh) and writes the Homebrew Channel files into the site folder, the GitHub Pages
 # repository users add to the Homebrew Channel:
 #   <id>_<version>_arm.ipk, icon.png, api/apps/<id>/manifest.json (+ releases/latest.json,
@@ -20,7 +20,7 @@ mkdir -p "$SITE"
 python3 - "$ROOT" "$VER" <<'EOF'
 import re, sys
 root, ver = sys.argv[1], sys.argv[2]
-for f in ('pkg/appinfo.json', 'assets/whatsnew.json'): # the version alone, the files as they are written
+for f in ('pkg/appinfo.json',): # the version alone, the file as it is written (the What's new card keeps its own version: it is keyed by it, so a fix release with the same card never shows it twice)
     p = root + '/' + f; t = open(p, encoding='utf-8').read(); n = re.subn(r'("version"\s*:\s*")[^"]*(")', r'\g<1>' + ver + r'\g<2>', t, count=1)
     if n[1] != 1: sys.exit('no version in ' + f)
     open(p, 'w', encoding='utf-8').write(n[0])
@@ -40,10 +40,10 @@ cp "$ROOT/pkg/vista-largeIcon.png" "$SITE/icon.png"
 python3 - "$SITE" "$ID" "$VER" "$SHA" "$BASE" "$SRC" <<'EOF'
 import json, os, sys
 site, pid, ver, sha, base, src = sys.argv[1:]
-short = 'Native app for Stremio addons on LG webOS TVs. Unofficial.'
+short = "A native app for Stremio addons on LG webOS."
 manifest = {
   'id': pid, 'version': ver, 'type': 'native', 'title': 'Stremio Vista',
-  'appDescription': 'Your own Stremio account and addons on your LG TV: artwork, trailers, the best stream in one press, subtitles, torrents, 11 languages. Unofficial.',
+  'appDescription': 'Your own Stremio account and addons on your LG TV: artwork, trailers, the best stream in one press, subtitles, torrents, 28 languages. Unofficial.',
   'iconUri': base + '/icon.png', 'sourceUrl': src, 'rootRequired': False,
   'ipkUrl': '%s/%s_%s_arm.ipk' % (base, pid, ver), 'ipkHash': {'sha256': sha}}
 d = os.path.join(site, 'api', 'apps', pid)
@@ -60,8 +60,8 @@ open(os.path.join(site, 'apps.json'), 'w').write(json.dumps(listing, indent=2) +
 open(os.path.join(d, 'full_description.html'), 'w').write(
   '<p><b>Stremio Vista</b>: a native app for Stremio addons on LG webOS TVs (ARM).</p>\n'
   '<p>Bring your own Stremio account and addons: the app ships empty and plays only the links your addons return. '
-  'Artwork and trailers, the best stream for your TV in one press, styled subtitles and subtitle sync, torrents, 11 languages.</p>\n'
-  '<p>Based on Stremio Origin, tested upstream on webOS 4.4. Vista TV validation pending. Unofficial: not affiliated with Stremio.</p>\n'
+  'Artwork and trailers, the best stream for your TV in one press, styled subtitles and subtitle sync, torrents, 28 languages.</p>\n'
+  '<p>Forked from Stremio Origin. Unofficial: not affiliated with Stremio.</p>\n'
   '<p>Source: <a href="%s">%s</a></p>\n' % (src, src))
 print('site updated:', pid, ver, sha)
 EOF

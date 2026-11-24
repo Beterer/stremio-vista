@@ -4,9 +4,10 @@
 
 Scr SCR = SCR_HOME;
 TopNav topNav;
-static int cwCount, discCount = 2, pendingCount;
+static int cwCount, upcomingCount, discCount = 2, pendingCount;
 static struct { CatalogDef def; void (*cb)(ItemList *, int, void *); void *ud; } pending[256];
 double app_now(void) { return 10; }
+unsigned tw_ver(void) { return 0; }
 unsigned lib_version(void) { return (unsigned)cwCount; }
 void focus_pop(FocusPop *f) { (void)f; }
 void itemlist_clear(ItemList *l) { free(l->items); memset(l, 0, sizeof *l); }
@@ -18,10 +19,6 @@ int lib_cw_items(ItemList *out) {
   return cwCount;
 }
 int sb_home_defs(CatalogDef *out, int max) {
-  if (!max) return 0;
-  memset(out, 0, sizeof *out); snprintf(out->title, sizeof out->title, "Old Home catalog"); return 1;
-}
-int sb_disc_defs(CatalogDef *out, int max) {
   if (!out) return discCount;
   int n = discCount < max ? discCount : max;
   for (int i = 0; i < n; i++) { memset(&out[i], 0, sizeof out[i]); snprintf(out[i].title, sizeof out[i].title, "Discover %d", i); out[i].skip = 1; }
@@ -30,6 +27,23 @@ int sb_disc_defs(CatalogDef *out, int max) {
 void sb_catalog(const CatalogDef *def, void (*cb)(ItemList *, int, void *), void *ud) {
   assert(pendingCount < 256); pending[pendingCount].def = *def; pending[pendingCount].cb = cb; pending[pendingCount++].ud = ud;
 }
+int notify_upcoming(ItemList *out) {
+  memset(out, 0, sizeof *out); out->n = upcomingCount;
+  if (upcomingCount) { out->items = calloc(1, sizeof(Item)); snprintf(out->items[0].id, sizeof out->items[0].id, "upcoming"); }
+  return out->n;
+}
+int live_band(ItemList *out) { memset(out, 0, sizeof *out); return 0; }
+int live_catalog_listed(const char *url) { (void)url; return 0; }
+int live_type(const char *type) { (void)type; return 0; }
+int sb_disc_types(char (*out)[16], int max) { (void)out; (void)max; return 0; }
+int sb_disc_cats(const char *type, CatalogDef *out, char (*addon)[64], int max) { (void)type; (void)out; (void)addon; (void)max; return 0; }
+int sb_disc_cat_genres(const CatalogDef *d, char (*out)[48], int max, int *required) { (void)d; (void)out; (void)max; *required = 0; return 0; }
+void sb_disc_with_genre(CatalogDef *d, const char *genre) { (void)d; (void)genre; }
+void sb_catalog_url(const char *url, const char *type, int n, void (*cb)(ItemList *, int, void *), void *ud) { (void)url; (void)type; (void)n; (void)cb; (void)ud; }
+void sb_catalog_page(const CatalogDef *d, int skip, void (*cb)(ItemList *, int, void *), void *ud) { (void)d; (void)skip; (void)cb; (void)ud; }
+const char *sb_logo_of(const Item *it, char *out, size_t cap) { (void)it; if (cap) out[0] = 0; return out; }
+const char *sb_poster_of(const Item *it, char *out, size_t cap) { return sb_logo_of(it, out, cap); }
+void accent_tint_fetch(const char *id, const char *poster, const char *logo) { (void)id; (void)poster; (void)logo; }
 static void reply(int request, const char *id) {
   ItemList *l = calloc(1, sizeof *l); l->n = l->total = id ? 1 : 0; l->items = calloc(1, sizeof(Item));
   if (id) snprintf(l->items[0].id, sizeof l->items[0].id, "%s", id);
@@ -67,8 +81,20 @@ static void library_refresh_keeps_catalog_page(void) {
   assert(b->rows[0].items.n == 2);
   reset();
 }
+static void dynamic_row_keeps_catalog_page(void) {
+  Board *b = &boards[0]; cwCount = 1; discCount = 2; board_update_rows(b);
+  reply(0, "catalog"); b->rowIdx = 1;
+  Row *r = &b->rows[1]; r->skipAt = 32; r->paged = 1;
+  upcomingCount = 1; board_refresh_quiet();
+  assert(b->rowIdx == 2 && b->rows[1].items.n == 1);
+  assert(!strcmp(focused_of(b)->id, "catalog") && b->rows[2].skipAt == 32 && b->rows[2].paged);
+  upcomingCount = 0; board_refresh_quiet();
+  assert(b->rows[1].closing && !strcmp(focused_of(b)->id, "catalog"));
+  reset();
+}
 int main(void) {
   library_refresh_keeps_catalog_page();
+  dynamic_row_keeps_catalog_page();
   Board *b = &boards[0];
   cwCount = 2; load_catalog_rows(b, 0, 0);
   assert(b->n == 3 && b->rows[0].wide && b->rows[0].items.n == 2);

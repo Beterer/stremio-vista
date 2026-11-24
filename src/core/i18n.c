@@ -18,11 +18,13 @@ static void index_build(void) {
   idx = calloc(idxCap, sizeof *idx); const cJSON *it;
   cJSON_ArrayForEach(it, dict) if (it->string) { unsigned i = hash_str(it->string) & (idxCap - 1); while (idx[i] && strcmp(idx[i]->string, it->string)) i = (i + 1) & (idxCap - 1); idx[i] = it; }
 }
-static const char *codes[] = { "en", "ar", "fr", "es", "de", "it", "pt", "ru", "tr", "pl", "nl" };
-static const char *names[] = { "English", "العربية", "Français", "Español", "Deutsch", "Italiano", "Português", "Русский", "Türkçe", "Polski", "Nederlands" };
+static const char *codes[] = { "en", "ar", "fr", "es", "de", "it", "pt", "pt-BR", "ru", "tr", "pl", "nl", "el", "ro", "hu", "cs", "sk", "uk", "bg", "sr", "hr", "sv", "da", "no", "fi", "id", "vi", "fa" }; /* pt-BR: its own words (a Brazilian TV picks it), pt the European ones */
+#define NLANG ((int)(sizeof codes / sizeof codes[0]))
+static const char *names[] = { "English", "العربية", "Français", "Español", "Deutsch", "Italiano", "Português", "Português (Brasil)", "Русский", "Türkçe", "Polski", "Nederlands", "Ελληνικά", "Română", "Magyar", "Čeština", "Slovenčina", "Українська", "Български", "Srpski", "Hrvatski",
+  "Svenska", "Dansk", "Norsk", "Suomi", "Bahasa Indonesia", "Tiếng Việt", "فارسی" };
 
 static char *read_all(const char *p) { FILE *f = fopen(p, "rb"); if (!f) return NULL; fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET); char *b = malloc(n + 1); size_t g = fread(b, 1, n, f); b[g] = 0; fclose(f); return b; }
-static int known(const char *c) { for (int i = 0; i < 11; i++) if (!strcmp(codes[i], c)) return 1; return 0; }
+static int known(const char *c) { for (int i = 0; i < NLANG; i++) if (!strcmp(codes[i], c)) return 1; return 0; }
 /* the TV's own language, two letters: its settings service (asked once, the answer kept for the next start),
    else the last answer it gave, else the environment */
 static char tvLang[8];
@@ -32,6 +34,8 @@ const char *i18n_tv_lang(void) {
   if (!loc || !*loc) loc = getenv("LANG");
   if (!loc || strlen(loc) < 2) loc = "en";
   tvLang[0] = (char)(loc[0] | 32); tvLang[1] = (char)(loc[1] | 32); tvLang[2] = 0;
+  if (!strcmp(tvLang, "pt") && (loc[2] == '-' || loc[2] == '_') && (loc[3] | 32) == 'b' && (loc[4] | 32) == 'r') snprintf(tvLang, sizeof tvLang, "pt-BR"); /* Brazil's own words, not Portugal's */
+  if (!strcmp(tvLang, "nb") || !strcmp(tvLang, "nn")) snprintf(tvLang, sizeof tvLang, "no"); /* Norwegian, whichever written form the TV names */
   return tvLang;
 }
 /* First run: prefer English for subtitles and audio; keep any saved language choices. */
@@ -66,7 +70,7 @@ int i18n_init(const char *assetDir, const char *want) {
     if (d) closedir(d);
   }
   index_build();
-  rtl = !strcmp(lang, "ar");
+  rtl = !strcmp(lang, "ar") || !strcmp(lang, "fa");
   return 1;
 }
 const char *i18n_lang(void) { return lang; }
@@ -96,6 +100,6 @@ static void subst(char *out, size_t cap, const char *s, const char *k1, const ch
 }
 const char *T1(const char *en, const char *k1, const char *v1) { char *b = bufs[bi++ & 7]; subst(b, 1024, T(en), k1, v1 ? v1 : "", NULL, NULL); return b; }
 const char *T2(const char *en, const char *k1, const char *v1, const char *k2, const char *v2) { char *b = bufs[bi++ & 7]; subst(b, 1024, T(en), k1, v1 ? v1 : "", k2, v2 ? v2 : ""); return b; }
-const char *i18n_lang_name(const char *code) { for (int i = 0; i < 11; i++) if (!strcmp(codes[i], code)) return names[i]; return code; }
-int i18n_lang_count(void) { return 11; }
-const char *i18n_lang_code(int i) { return i >= 0 && i < 11 ? codes[i] : "en"; }
+const char *i18n_lang_name(const char *code) { for (int i = 0; i < NLANG; i++) if (!strcmp(codes[i], code)) return names[i]; return code; }
+int i18n_lang_count(void) { return NLANG; }
+const char *i18n_lang_code(int i) { return i >= 0 && i < NLANG ? codes[i] : "en"; }
