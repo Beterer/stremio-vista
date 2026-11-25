@@ -1,5 +1,7 @@
 /* Installed catalog enumeration must survive large collections and configured URLs. */
 #include <assert.h>
+#include <pthread.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +27,30 @@ static void respond(void) {
 const char *T(const char *s) { return s; }
 const char *store_get(const char *key, const char *fallback) { return !strcmp(key, "adOn_disabled") ? "false" : fallback; }
 cJSON *store_node(const char *key) { return !strcmp(key, "addons") ? addons : NULL; }
+void plat_thread_background(int nice_by) { (void)nice_by; }
+static pthread_mutex_t pageLock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t pageReady = PTHREAD_COND_INITIALIZER;
+static NetCb pageReply;
+static void *pageData;
+unsigned net_file(const char *path, NetCb cb, void *ud) {
+  (void)path; pthread_mutex_lock(&pageLock);
+  pageReply = cb; pageData = ud;
+  pthread_cond_signal(&pageReady); pthread_mutex_unlock(&pageLock);
+  return 1;
+}
+static void finish_page(void) {
+  if (answers == 3) return; /* the fallback can finish synchronously */
+  struct timespec until; clock_gettime(CLOCK_REALTIME, &until); until.tv_sec += 5;
+  pthread_mutex_lock(&pageLock);
+  while (!pageReply) assert(pthread_cond_timedwait(&pageReady, &pageLock, &until) == 0);
+  pthread_mutex_unlock(&pageLock);
+  pageReply(0, NULL, 0, pageData);
+}
+unsigned net_get_timeout(const char *url, int ms, NetCb cb, void *ud) { (void)ms; return net_get(url, cb, ud); }
+int traktrows_is(const char *url) { (void)url; return 0; }
+void traktrows_fetch(const char *url, NetCb cb, void *ud) { (void)url; (void)cb; (void)ud; assert(0); }
+int traktrows_defs(CatalogDef *out, int max) { (void)out; (void)max; return 0; }
+
 int main(void) {
   addons = cJSON_CreateArray();
   cJSON *ad = cJSON_CreateObject(); cJSON_AddItemToArray(addons, ad);
@@ -38,9 +64,9 @@ int main(void) {
     cJSON_AddStringToObject(cat, "id", id); cJSON_AddStringToObject(cat, "name", id);
     cJSON_AddStringToObject(cat, "type", i % 2 ? "series" : "movie"); cJSON_AddItemToArray(cats, cat);
   }
-  assert(sb_disc_defs(NULL, 0) == 70);
+  assert(sb_home_defs(NULL, 0) == 70);
   CatalogDef *defs = calloc(70, sizeof *defs); assert(defs);
-  assert(sb_disc_defs(defs, 70) == 70);
+  assert(sb_home_defs(defs, 70) == 70);
   assert(!strcmp(defs[0].title, "list0 · Movies") && !strcmp(defs[69].title, "list69 · Series"));
   assert(strlen(defs[0].url) > 5600 && strstr(defs[0].url, "/catalog/movie/list0.json"));
   assert(strstr(defs[69].url, "/catalog/series/list69.json") && strcmp(defs[0].url, defs[69].url));
@@ -50,14 +76,14 @@ int main(void) {
   sb_catalog(&defs[69], answer, NULL); respond();
   assert(strcmp(written[0], written[2]) && !strcmp(written[2] + 4, defs[69].url));
   sb_catalog_page(&defs[0], 16, page, NULL); assert(strlen(requestUrl) > 5600 && strstr(requestUrl, "/skip=16.json")); respond();
-  assert(answers == 3);
+  finish_page(); assert(answers == 3);
   cJSON *search = cJSON_AddArrayToObject(cJSON_GetArrayItem(cats, 0), "extra");
   cJSON *filter = cJSON_CreateObject(); cJSON_AddStringToObject(filter, "name", "search"); cJSON_AddItemToArray(search, filter);
   assert(sb_search_defs("a title", defs, 70) == 1);
   assert(strlen(defs[0].url) > 5600 && strstr(defs[0].url, "/search=a%20title.json"));
-  assert(sb_disc_defs(defs, 3) == 3 && !strcmp(defs[2].title, "list2 · Movies"));
+  assert(sb_home_defs(defs, 3) == 3 && !strcmp(defs[2].title, "list2 · Movies"));
   cJSON_Delete(addons); addons = NULL;
-  assert(sb_disc_defs(NULL, 0) == 4 && sb_disc_defs(defs, 70) == 4);
+  assert(sb_home_defs(NULL, 0) == 4 && sb_home_defs(defs, 70) == 4);
   assert(!strcmp(defs[3].title, "Top Rated · Series"));
   free(defs); puts("catalog definitions: all installed rows, account order, long URLs and movie/series fallback passed");
 }

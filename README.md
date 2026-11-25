@@ -4,30 +4,41 @@
 
 <h1 align="center">Stremio Vista</h1>
 
-<p align="center">A native TV app for Stremio addons, written in C.</p>
+<p align="center">A native app for Stremio addons, written in C.</p>
 
 <p align="center"><em>Stremio™ is a trademark of its owner. Stremio Vista is independent and unofficial, and is not affiliated with, endorsed by or sponsored by Stremio. The name only describes compatibility.</em></p>
 
-<p align="center">You bring your own Stremio account and your own addons. The app ships empty, hosts and indexes nothing, and plays only the stream links your addons return.</p>
+<p align="center">You bring your own Stremio account and your own addons. The app ships empty and plays only the stream links your addons return.</p>
 
 Stremio Vista is a custom fork of [Stremio Origin](https://github.com/stremio-origin/webos).
 This repository contains Vista's development and releases.
 
 ## Features
-- Home with Continue Watching first, followed by all browsable catalogs from your enabled Stremio addons in account order, plus Library and Search
-- Browsing metadata on one row: duration in minutes, year, genres and IMDb rating
-- A setting to disable navigation click sounds
-- The best stream for your TV and connection, picked in one press
-- Buttons and highlights take their colour from each title's logo or artwork
-- People, reviews and a spotlight of what's new on every title
-- A player with episodes, sources, subtitles and audio, skip intro and recap, and a next-episode card
-- Styled subtitles as the film made them, and subtitle sync
-- DTS sound converted on the TV, and Dolby Vision on TVs that support it
-- Torrent playback with a buffer sized to your TV, and an optional USB drive
-- Cast to the TV from your phone (the Android app is almost done)
+- Home with Continue Watching first, followed by browsable catalogs from your enabled Stremio addons in account order, plus Library and Search
+- Browsing metadata in one row with duration in minutes, year, genres and IMDb rating
+- [Watch Together](docs/watch-together.md) with a friend on Stremio Web, with automatic synchronized start and shared playback controls
+- Seek previews: a picture of the film on the seek bar, for debrid and direct links
+- Trakt: link with a code, scrobbling, rows on Home, watched marks and Continue Watching from Trakt
+- Film collections in order, in the Library too, and the next film after the credits
+- Live TV and sports from your addons, with All channels, Favorites, Recent and a preview as you browse
+- The best stream picked in one press, and a sources tray with a tab for each addon
+- Styled subtitles as the film made them, with fonts (Arabic too), size, colour, position, brightness and sync
+- Forced-only subtitles and per-show subtitle and audio preferences
+- Chapters, skip intro and recap, and a next-episode card in two sizes
+- Auto-play next episode, and a trailer behind Home
+- Spoilers blurred for episodes you haven't watched, and upcoming episodes on Home
+- A viewer notice as a film starts: an age and its reasons, from IMDb's Parents Guide
+- A row for every catalog, with artwork, logos, trailers, people, reviews and ratings
+- Titles and descriptions in your language
 - Library, watched state and Continue Watching synced with your Stremio account
-- 11 languages, including Arabic (right to left)
-- Updates from inside the app
+- Accent colour, a 12 or 24 hour clock and interface sounds
+- Dolby Vision on TVs that support it
+- DTS sound converted on the TV
+- Torrents, with an optional USB drive
+- Picture size: original, fill or zoom
+- The app's own screen saver
+- The pointer hides when idle, and OK presses what you point at
+- 28 languages, Arabic included (right to left); updates and Share logs from the app
 
 ## Install
 For LG TVs running webOS 3 and later (ARM). The original app was tested on webOS 4.4;
@@ -43,7 +54,12 @@ use Vista's releases, independently of the original project's updates.
 ## Privacy
 - Sign-in goes directly to Stremio. Your account stays on the TV.
 - No analytics. Nothing is sent to the developer.
-- Logs stay on the TV. Sharing them is your choice: the app seals them and shows a short code.
+- Logs stay on the TV. Sharing them is your choice: Settings > About > Share logs.
+
+## Trakt
+Trakt is optional. You link it with a code and the sign-in stays on the TV. While it is linked, what you watch is added to your Trakt history. The app also reads your Trakt name and stats, history, watchlist, recommendations, watched marks and paused positions, only to show them in the app. Unlink any time: Settings > Trakt > Disconnect Trakt.
+
+Stremio Vista uses Trakt but is not endorsed or certified by Trakt.
 
 ## Development
 See [local development](docs/development.md) for the Windows/Docker toolchain,
@@ -54,6 +70,7 @@ with public catalogs; desktop preview playback is simulated.
 ## Support
 - [Vista issues](https://github.com/Beterer/stremio-vista/issues)
 - [Support the original developer](https://ko-fi.com/simussu)
+- <img src="docs/discord.svg" height="18" align="top"> [Discord](https://discord.gg/SJEtyV3kW6)
 
 ## Credits
 - Original application: [Stremio Origin](https://github.com/stremio-origin/webos).
@@ -63,3 +80,5 @@ with public catalogs; desktop preview playback is simulated.
 
 ## Licence
 GPL-3.0, see [LICENSE](LICENSE). Third-party components and their licences: [third_party/licenses/README.txt](third_party/licenses/README.txt).
+
+Provided as is, for personal use on devices you own.

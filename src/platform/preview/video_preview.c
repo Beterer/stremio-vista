@@ -60,3 +60,11 @@ int video_audio_unsupported(void) {
   if (!getenv("SB_VID_NODTS") || st != VID_PLAYING || pos < 1) return 0;
   VidTrack t[16]; int n = video_audio_tracks(t, 16); return cur < n && (strstr(t[cur].codec, "dts") || strstr(t[cur].codec, "truehd"));
 }
+
+void video_set_live(int on) { (void)on; }
+
+void video_live_rejoin(void) { if (st == VID_PAUSED) { st = VID_PLAYING; t0 = SDL_GetTicks() / 1000.0 - pos; } }
+
+int video_edge_colors(uint32_t *out4) { (void)out4; return 0; }
+
+VidPlaneCaps video_plane_caps(void) { return (VidPlaneCaps){ 1, 0, 0, 0 }; }

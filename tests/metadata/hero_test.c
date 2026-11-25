@@ -12,6 +12,7 @@ unsigned i18n_gen(void) { return 1; }
 const TmdbLoc *tmdb_loc(const char *type, const char *id, int overview) { (void)type; (void)id; (void)overview; return useLocalized ? &localized : NULL; }
 cJSON *sb_meta_cached(const char *type, const char *id) { (void)type; return !strcmp(id, "movie1") ? metadata : NULL; }
 const char *sb_logo_of(const Item *it, char *out, size_t cap) { (void)it; (void)cap; out[0] = 0; return out; }
+int live_type(const char *type) { (void)type; return 0; }
 int img_failed(const char *url) { (void)url; return 0; }
 int img_loaded(const char *url) { (void)url; return 0; }
 GLuint img_get(const char *url, int w, int h, float *aspect) { (void)url; (void)w; (void)h; (void)aspect; return 0; }

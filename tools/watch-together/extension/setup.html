@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vista Watch Together</title>
+<style>
+  :root { color-scheme: dark; font: 15px/1.45 system-ui, sans-serif; background: #171521; color: #f5f1ff; }
+  body { min-width: 296px; max-width: 420px; margin: 20px; }
+  h1 { margin: 0 0 16px; font-size: 20px; }
+  form { display: grid; gap: 8px; }
+  input, button { box-sizing: border-box; padding: 10px 12px; border: 1px solid #655b7d; border-radius: 8px; font: inherit; }
+  input { width: 100%; background: #252133; color: inherit; }
+  button { width: max-content; background: #ded0ff; color: #20143b; font-weight: 650; cursor: pointer; }
+  p { margin: 12px 0 0; }
+  a { color: #ded0ff; }
+</style>
+<h1>Vista Watch Together</h1>
+<form>
+  <label for="relay">Relay address</label>
+  <input id="relay" type="url" placeholder="https://watch.example.com" required spellcheck="false">
+  <button type="submit">Save</button>
+</form>
+<p id="status" role="status"></p>
+<p>Open the Watch Together panel in <a href="https://web.stremio.com/" target="_blank" rel="noopener">Stremio Web</a> to enter your room code.</p>
+<script type="module" src="setup.mjs"></script>
+</html>

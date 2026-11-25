@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Vista Watch Together",
+  "description": "Synchronize Stremio Web playback with an invite-only room on Stremio Vista.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "109",
+  "permissions": ["storage"],
+  "optional_host_permissions": ["https://*/*", "http://127.0.0.1/*"],
+  "background": { "service_worker": "worker.mjs", "type": "module" },
+  "action": { "default_popup": "setup.html" },
+  "options_ui": { "page": "setup.html", "open_in_tab": true },
+  "content_scripts": [{ "matches": ["https://web.stremio.com/*"], "js": ["boot.js"] }],
+  "web_accessible_resources": [{ "resources": ["content.mjs", "adapter.mjs"], "matches": ["https://web.stremio.com/*"] }]
+}

@@ -29,7 +29,7 @@ if ($Command -eq 'setup') {
 
 $runArgs = @('run', '--rm', '--init', '--mount', "type=bind,source=$repoRoot,target=/workspace",
     '--mount', 'type=volume,source=webos-dev-cache,target=/opt/origin-build', '--workdir', '/workspace')
-foreach ($name in @('APPID', 'TITLE', 'ENGINE_JOBS', 'FFMPEG_JOBS')) {
+foreach ($name in @('APPID', 'TITLE', 'ENGINE_JOBS', 'FFMPEG_JOBS', 'SBD_PREVIEW')) {
     $value = [Environment]::GetEnvironmentVariable($name)
     if ($value) { $runArgs += @('--env', "$name=$value") }
 }

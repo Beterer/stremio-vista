@@ -10,9 +10,11 @@ mkdir -p "$STAGE/app/assets"
 sed -e "s/\"id\": \"tv.stremiovista.app\"/\"id\": \"$APPID\"/" -e "s/\"title\": \"Stremio Vista\"/\"title\": \"$TITLE\"/" "$ROOT/pkg/appinfo.json" > "$STAGE/app/appinfo.json"
 cp "$BIN" "$STAGE/app/stremioorigin"; chmod 755 "$STAGE/app/stremioorigin"
 if [ -f "$ROOT/build/webos/libsbengine.so" ]; then cp "$ROOT/build/webos/libsbengine.so" "$STAGE/app/"; else echo "note: no build/webos/libsbengine.so (tools/build-engine.sh webos): torrents will be unavailable"; fi
+if [ -f "$ROOT/build/webos/libsbdts.so" ] && ! grep -q sbd_prev_get "$ROOT/build/webos/libsbdts.so" && [ "${SBD_PREVIEW:-1}" != 0 ]; then
+  echo "the converter library has no video decoders, so this package would have no seek previews: rebuild it (tools/build-ffmpeg.sh webos), or set SBD_PREVIEW=0 to package it without previews on purpose"; exit 1; fi
 if [ -f "$ROOT/build/webos/libsbdts.so" ]; then cp "$ROOT/build/webos/libsbdts.so" "$STAGE/app/"; else echo "note: no build/webos/libsbdts.so (tools/build-ffmpeg.sh webos): DTS-only files will play without sound"; fi
 cp "$ROOT"/assets/{vista-icon.png,splashbg.jpg,cacert.pem,whatsnew.json} "$ROOT"/assets/icons*.json "$STAGE/app/assets/"
-cp "$ROOT"/pkg/vista-icon.png "$ROOT"/pkg/vista-largeIcon.png "$STAGE/app/"
+cp "$ROOT"/pkg/vista-icon.png "$ROOT"/pkg/vista-largeIcon.png "$ROOT"/pkg/bgImage.png "$ROOT"/pkg/imageForRecents.png "$STAGE/app/"
 cp -R "$ROOT/assets/fonts" "$ROOT/assets/i18n" "$ROOT/assets/sounds" "$ROOT/assets/guide" "$STAGE/app/assets/"
 [ -d "$ROOT/third_party/licenses" ] && cp -R "$ROOT/third_party/licenses" "$STAGE/app/licenses" || true
 # nothing personal may travel in the package (build paths are not kept: the binary is stripped)
@@ -21,4 +23,4 @@ mkdir -p "$ROOT/dist"
 ares-package -n -o "$ROOT/dist" "$STAGE/app"
 IPK="$ROOT/dist/${APPID}_$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$STAGE/app/appinfo.json")_arm.ipk"
 python3 "$ROOT/tools/scrub_ipk.py" "$IPK" # the archives would record the build machine's user and group
-ls -l "$ROOT"/dist/*.ipk
+ls -l "$IPK"

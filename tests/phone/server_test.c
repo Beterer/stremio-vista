@@ -61,7 +61,16 @@ int main(int argc, char **argv) {
   assert(httpd_hits() == 2);
   snprintf(submit, sizeof submit, "%s", url); char *t = strstr(submit, "/t/"); assert(t); t[3] = 'f';
   get(submit, body, sizeof body); assert(strstr(body, "404 Not Found"));
-  puts("Phone key pages: reachable address, both providers, validation and token protection passed");
+  char origin[WATCH_ORIGIN_CAP]; unsigned before = httpd_watch_origin(origin, sizeof origin);
+  assert(httpd_url("/watch", url, sizeof url));
+  get(url, body, sizeof body); assert(strstr(body, "200 OK") && strstr(body, "Watch Together relay"));
+  snprintf(submit, sizeof submit, "%s/set?origin=http%%3A%%2F%%2Finvalid.example", url);
+  get(submit, body, sizeof body); assert(strstr(body, "400 Bad Request"));
+  assert(httpd_watch_origin(origin, sizeof origin) == before);
+  snprintf(submit, sizeof submit, "%s/set?origin=https%%3A%%2F%%2Fwatch.example%%3A8443%%2F", url);
+  get(submit, body, sizeof body); assert(strstr(body, "204 No Content"));
+  assert(httpd_watch_origin(origin, sizeof origin) != before && !strcmp(origin, "https://watch.example:8443"));
+  puts("Phone setup pages: key providers, Watch Together relay validation and token protection passed");
   fflush(stdout);
   if (argc > 1 && !strcmp(argv[1], "serve")) for (;;) pause(); /* Docker publication integration check */
   return 0;
