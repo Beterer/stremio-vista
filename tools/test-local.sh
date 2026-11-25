@@ -10,6 +10,10 @@ bash tests/update/run.sh
 bash tests/metadata/run.sh
 bash tests/phone/run.sh
 mkdir -p build
+node --test tests/watch-together/*.test.mjs
+cc -std=c11 -D_GNU_SOURCE -Wall -Wextra \
+  -Isrc -Ithird_party/cjson tests/watch-together/native_test.c src/core/watch.c third_party/cjson/cJSON.c -lm -o build/watch_test
+build/watch_test
 cc -std=c11 -D_GNU_SOURCE -DSB_BEST_PURE -Wall -Wextra -Wno-unused-parameter -O1 -g \
   -Isrc -Ithird_party/cjson tests/best/best_test.c src/core/best.c third_party/cjson/cJSON.c -lm -o build/best_test
 python3 - <<'PY'

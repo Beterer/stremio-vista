@@ -17,6 +17,7 @@ unsigned net_file(const char *path, NetCb cb, void *ud);  /* a local file read (
 unsigned net_size(const char *url, NetCb cb, void *ud);
 unsigned net_get_hdr(const char *url, const char *extraHeader, NetCb cb, void *ud);  /* several: one per line */
 unsigned net_post_json(const char *url, const char *json, NetCb cb, void *ud);
+unsigned net_post_json_direct(const char *url, const char *json, int timeoutMs, NetCb cb, void *ud); /* one origin, small reply */
 /* a POST with its own headers: one "Name: value" per line ("\n" between them); a User-Agent among them
    replaces the app's. contentType NULL or "" sends none of ours. net_post_hdr_t: a timeout other than 20 s */
 unsigned net_post_hdr_t(const char *url, const char *body, const char *contentType, const char *headers, int timeoutMs, NetCb cb, void *ud);

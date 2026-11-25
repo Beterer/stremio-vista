@@ -14,6 +14,7 @@
 #include "core/keys.h"
 #include "core/i18n.h"
 #include "core/store.h"
+#include "core/watch.h"
 #include "core/p2p.h"
 #include "core/json.h"
 #include "core/best.h"
@@ -79,7 +80,7 @@ static const Opt SS_OPTS[] = { { "0", "Off" }, { "1", "1 min" }, { "2", "2 min" 
 static const Opt ACCENT_OPTS[] = { { "logo", "From the logo" }, { "adaptive", "From the artwork" }, { "purple", "Purple" }, { "violet", "Violet" }, { "fuchsia", "Fuchsia" }, { "pink", "Pink" }, { "rose", "Rose" }, { "red", "Red" }, { "orange", "Orange" }, { "amber", "Amber" }, { "gold", "Gold" }, { "lime", "Lime" }, { "green", "Green" }, { "emerald", "Emerald" }, { "teal", "Teal" }, { "cyan", "Cyan" }, { "sky", "Sky" }, { "blue", "Blue" }, { "indigo", "Indigo" }, { "graphite", "Graphite" } };
 #define NCAT 11
 #define MAXROWS 48
-static Setting playBase[14], playS[10], seekS[6], subsS[11], audS[4], lookS[6], langS[44], langOpt, keyS[4], traktS[6], addonS[40], acctS[1], supS[10];
+static Setting playBase[15], playS[10], seekS[6], subsS[11], audS[4], lookS[6], langS[44], langOpt, keyS[4], traktS[6], addonS[40], acctS[1], supS[10];
 static Cat cats[NCAT]; static int ncat; /* (Keys leaves when this build carries every key) */
 
 /* the layout, in the web's pixels: the grid is centred, 1600 wide, 150 from the top */
@@ -205,6 +206,7 @@ static void play_layout(void) {
   int on = strcmp(store_get("bgTrailer", "true"), "false") != 0, n = 0;
   playS[n++] = playBase[4]; playS[n++] = playBase[1]; playS[n++] = playBase[12]; playS[n++] = playBase[8]; playS[n++] = playBase[2]; { const TvCaps *tc = best_caps(); if (tc && tc->dv) playS[n++] = playBase[7]; }
   playS[n++] = playBase[13]; /* torrents: how they connect, then their USB cache, last */
+  playS[n++] = playBase[14];
   iUsb = n; playS[n++] = playBase[5]; /* the USB cache, last */
   set_count(playS, n);
   n = 0; seekS[n++] = playBase[0]; seekS[n++] = playBase[9];
@@ -239,6 +241,7 @@ static void build(void) {
   set_s(&playBase[7], "dv7Convert", "Dolby Vision for Blu-ray copies", "Their picture is converted on this TV so it shows in Dolby Vision, not HDR10", OO, 2, "true");
   set_s(&playBase[6], "bgTrailerVol", "Volume", "The sound comes up softly to this level", SVOL, 10, "70"); playBase[6].sub = 1; /* (shown right under the trailers while they are on: play_layout; drawn as theirs, set in) */
   usb_row();
+  set_act(&playBase[14], "__watch", "Watch Together relay", "");
   set_s(&subsS[0], "subsLang", "Default subtitles", "Chosen by itself when a film starts", LANG_OPTS, NLANGOPTS, "eng");
   { static const Opt SM[] = { { "all", "All subtitles" }, { "forced", "Forced only" } }; /* (PR #50: forced tracks are the lines in another language and the signs) */
     set_s(&subsS[1], "subsMode", "Subtitle preference", "Forced only: just the lines in another language and the signs, from a forced track", SM, 2, "all"); }
@@ -516,6 +519,7 @@ static int key(int k) {
       if (!strcmp(op->k, "__tmdbOff")) { tmdb_key_clear(); relang(); toast(T("Titles and descriptions in English"), 2000, NULL); return 1; }
       if (!strcmp(op->k, "__trakt")) { qrcard_show_trakt(on_trakt_card, NULL); return 1; }
       if (!strcmp(op->k, "__traktOff")) { trakt_key_clear(); relang(); toast(T("The Trakt id is gone"), 2000, NULL); return 1; }
+      if (!strcmp(op->k, "__watch")) { watch_configure(); return 1; }
       if (!strcmp(op->k, "__keys")) { settings_open_keys(); return 1; }
       if (!strcmp(op->k, "__traktUnlink")) { scrobble_unlink(); board_invalidate(); trakt_relayout(); toast(T("Trakt is disconnected"), 2000, NULL); return 1; }
       if (!strcmp(op->k, "__sync")) sync_now(); else if (!strcmp(op->k, "__logs")) logcard_show(); else if (!strcmp(op->k, "__guide")) welcome_show_guide();

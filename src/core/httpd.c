@@ -1,6 +1,7 @@
 #include "core/httpd.h"
 #include "core/app.h"
 #include "core/i18n.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,12 +30,14 @@ static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
 static int alive, stopReq, nconn, serverPort = HTTPD_PORT; static double deadline;
 static char tok[17];
 static struct { int seq; char text[400]; } typed;
+static struct { unsigned seq; char origin[WATCH_ORIGIN_CAP]; } watch;
 static unsigned hits;
 static int (*keyFn)(const char *key), (*traktFn)(const char *key);
 
 /* the pages speak the app's language: its translations of these, taken when a screen asks for the server
    (the server thread never reads the dictionaries, which a language change rebuilds) */
 static const char *PK[] = { "Search on TV", "Search on your TV", "What you type shows up on the TV as you type.", "Film or series", "Sent", "Can\xe2\x80\x99t reach the TV",
+  "Watch Together relay", "Enter the relay’s HTTPS address.", "Enter a valid HTTPS address.",
   "Titles and descriptions", "Titles and descriptions in your language", "Paste your TMDB API key (or API Read Access Token). Get one at", "It stays on your TV.",
   "API key", "Save", "Checking\xe2\x80\xa6", "Saved. You can close this page.", "TMDB didn\xe2\x80\x99t accept this key.",
   "Ratings and reviews", "Ratings and reviews from Trakt", "Paste your Trakt Client ID. To get one:", "open", "sign in, then Settings \xe2\x80\xba Your API Apps \xe2\x80\xba New Application. Any name; as the redirect URI paste",
@@ -123,6 +126,41 @@ static void trakt_page(Buf *b) {
     "x.onerror=function(){s.textContent="); js(b, pt("Can\xe2\x80\x99t reach the TV")); b_s(b, ";};x.send();};</script></body></html>");
 }
 
+int watch_origin(const char *input, char out[WATCH_ORIGIN_CAP]) {
+  while (*input == ' ' || *input == '\t') input++;
+  size_t n = strlen(input);
+  while (n && (input[n - 1] == ' ' || input[n - 1] == '\t')) n--;
+  if (n && input[n - 1] == '/') n--;
+  const char *host = !strncmp(input, "https://", 8) ? input + 8 : !strncmp(input, "http://", 7) ? input + 7 : NULL;
+  if (!host || n >= WATCH_ORIGIN_CAP || input + n <= host) return 0;
+  const char *end = input + n, *p = host;
+  while (p < end && (isalnum((unsigned char)*p) || *p == '-' || *p == '.')) p++;
+  if (p == host || (host == input + 7 && (p - host != 9 || strncmp(host, "127.0.0.1", 9)))) return 0;
+  if (p < end) {
+    if (*p++ != ':' || p == end) return 0;
+    unsigned port = 0;
+    for (; p < end; p++) {
+      if (*p < '0' || *p > '9' || port > 6553) return 0;
+      port = port * 10 + (unsigned)(*p - '0');
+    }
+    if (!port || port > 65535) return 0;
+  }
+  memcpy(out, input, n); out[n] = 0;
+  return 1;
+}
+
+static void watch_page(Buf *b) {
+  head(b, pt("Watch Together relay")); b_s(b, "<h1>"); hx(b, pt("Watch Together relay"));
+  b_s(b, "</h1><p>"); hx(b, pt("Enter the relay’s HTTPS address."));
+  b_s(b, "</p><input id=\"r\" dir=\"ltr\" maxlength=\"255\" autocomplete=\"off\" spellcheck=\"false\" placeholder=\"https://\"><button id=\"b\">");
+  hx(b, pt("Save")); b_s(b, "</button><small id=\"s\" role=\"status\"></small><script>"
+    "var r=document.getElementById('r'),s=document.getElementById('s');document.getElementById('b').onclick=function(){"
+    "var x=new XMLHttpRequest();x.open('GET',location.pathname+'/set?origin='+encodeURIComponent(r.value.trim()));"
+    "x.onload=function(){s.textContent=x.status===204?"); js(b, pt("Saved. You can close this page."));
+  b_s(b, ":"); js(b, pt("Enter a valid HTTPS address.")); b_s(b, ";};x.onerror=function(){s.textContent=");
+  js(b, pt("Can\xe2\x80\x99t reach the TV")); b_s(b, ";};x.send();};</script></body></html>");
+}
+
 /* ---- requests ------------------------------------------------------------------------------------ */
 static void sendall(int fd, const char *p, size_t n) { while (n) { ssize_t w = send(fd, p, n, MSG_NOSIGNAL); if (w <= 0) { if (w < 0 && errno == EINTR) continue; return; } p += w; n -= (size_t)w; } }
 static void reply(int fd, int code, const char *extra, const char *body, size_t blen) {
@@ -168,8 +206,16 @@ static void handle(int fd) {
   const char *rest = NULL;
   if (!strncmp(target, "/t/", 3) && strlen(target) >= 19 && !strncmp(target + 3, tok, 16)) {
     rest = target + 19;
-    if (*rest && strcmp(rest, "/q") && strcmp(rest, "/tmdb") && strcmp(rest, "/tmdb/set") && strcmp(rest, "/trakt") && strcmp(rest, "/trakt/set")) rest = NULL; }
+    if (*rest && strcmp(rest, "/q") && strcmp(rest, "/tmdb") && strcmp(rest, "/tmdb/set") && strcmp(rest, "/trakt") && strcmp(rest, "/trakt/set") &&
+        strcmp(rest, "/watch") && strcmp(rest, "/watch/set")) rest = NULL; }
   if (!rest) { if (!strncmp(target, "/t/", 3) || !strcmp(target, "/")) { Buf b = { 0 }; pthread_mutex_lock(&mu); stale_page(&b); pthread_mutex_unlock(&mu); reply(fd, 404, "Content-Type: text/html; charset=utf-8\r\n", b.p, b.n); free(b.p); } else reply(fd, 404, NULL, NULL, 0); return; }
+  if (!strcmp(rest, "/watch/set")) {
+    char raw[1024], origin[WATCH_ORIGIN_CAP];
+    qparam(q, "origin", raw, sizeof raw);
+    if (!watch_origin(raw, origin)) { reply(fd, 400, NULL, NULL, 0); return; }
+    pthread_mutex_lock(&mu); watch.seq++; snprintf(watch.origin, sizeof watch.origin, "%s", origin); pthread_mutex_unlock(&mu);
+    reply(fd, 204, NULL, NULL, 0); return;
+  }
   if (strcmp(rest, "/q") && strcmp(rest, "/tmdb/set") && strcmp(rest, "/trakt/set")) { pthread_mutex_lock(&mu); hits++; pthread_mutex_unlock(&mu); } /* a code was opened */
   if (!strcmp(rest, "/tmdb/set") || !strcmp(rest, "/trakt/set")) {
     char key[1024]; qparam(q, "key", key, sizeof key);
@@ -180,7 +226,7 @@ static void handle(int fd) {
     pthread_mutex_lock(&mu); typed.seq++; snprintf(typed.text, sizeof typed.text, "%s", t); pthread_mutex_unlock(&mu);
     reply(fd, 204, NULL, NULL, 0); return; }
   Buf b = { 0 };
-  pthread_mutex_lock(&mu); if (!strcmp(rest, "/tmdb")) tmdb_page(&b); else if (!strcmp(rest, "/trakt")) trakt_page(&b); else search_page(&b); pthread_mutex_unlock(&mu);
+  pthread_mutex_lock(&mu); if (!strcmp(rest, "/tmdb")) tmdb_page(&b); else if (!strcmp(rest, "/trakt")) trakt_page(&b); else if (!strcmp(rest, "/watch")) watch_page(&b); else search_page(&b); pthread_mutex_unlock(&mu);
   reply(fd, 200, "Content-Type: text/html; charset=utf-8\r\n", b.p, b.n); free(b.p);
 }
 static void *conn_main(void *arg) {
@@ -297,3 +343,7 @@ int httpd_typed(int since, char *out, size_t cap) {
 unsigned httpd_hits(void) { pthread_mutex_lock(&mu); unsigned h = hits; pthread_mutex_unlock(&mu); return h; }
 void httpd_set_key_handler(int (*fn)(const char *key)) { pthread_mutex_lock(&mu); keyFn = fn; pthread_mutex_unlock(&mu); }
 void httpd_set_trakt_handler(int (*fn)(const char *key)) { pthread_mutex_lock(&mu); traktFn = fn; pthread_mutex_unlock(&mu); }
+unsigned httpd_watch_origin(char *out, size_t cap) {
+  pthread_mutex_lock(&mu); unsigned seq = watch.seq; snprintf(out, cap, "%s", watch.origin); pthread_mutex_unlock(&mu);
+  return seq;
+}

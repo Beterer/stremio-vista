@@ -8,6 +8,7 @@
 #include "ui/spoil.h"
 #include "ui/sound.h"
 #include "core/app.h"
+#include "core/watch.h"
 #include "core/keys.h"
 #include "core/i18n.h"
 #include "core/json.h"
@@ -103,7 +104,7 @@ static void mo_tick(Mo *m, float dt) { if (!m->on) return; m->t += dt; if (m->t 
 static float kf(double at, float dur, const float *c, float delay) { if (!at) return 1; return bez(c, (float)((app_now() - at - delay * ANIM_SPEED) / (dur * ANIM_SPEED))); }
 
 /* ---- state ---- */
-#define MAXBTN 8
+#define MAXBTN 9
 #define MAXROW 64
 typedef struct { int k; /* 0 note 1 skel 2 ep 3 src 4 chip; ls: a subtitle row's list, 1 OpenSubtitles 2 the addons' */ char lb[200], sub[120], ov[300], th[512], vl[48]; int on, spin, tool, hid, grey; int i, ls; const cJSON *v; Stream *st; char u[1024]; float d, hh, ww, vw; uint32_t sw; int vwt; } TItem; /* vwt: the value's weight (0: 700), a font row's in its own font */ /* hh, ww, vw: measured on first draw (items are made fresh, zeroed) */
 typedef struct { char title[64], vl[32]; TItem *items; int n; } TCol;
@@ -332,7 +333,7 @@ static void pw_tick(void) { if (!P.pw.on) return; VidState pv = video_state(); d
     size_t l = strlen(line); snprintf(line + l, sizeof line - l, "  \xc2\xb7  %s", tl); }
   status_apply(line); }
 static void fail(const char *t) { if (live_title() && !P.isTrailer && P.open && !P.closing && live_failover(P.id)) { fprintf(stderr, "[player] %s: the channel's next stream instead\n", t); video_unload(); P.live = 0; P.quiet = 1; return; } /* a channel: another of its streams first */
-  fprintf(stderr, "[player] %s | %s %s %s\n", t, P.type, P.id, P.vid); P.failed = 1; if (live_title()) live_reach_set(P.id, -1); /* (a channel that would not play: off air) */ video_unload(); P.live = 0;
+  fprintf(stderr, "[player] %s | %s %s %s\n", t, P.type, P.id, P.vid); watch_leave(); P.failed = 1; if (live_title()) live_reach_set(P.id, -1); /* (a channel that would not play: off air) */ video_unload(); P.live = 0;
   P.canNext = P.st.url[0] && strcmp(P.type, "other") && !P.isTrailer; if (P.canNext) best_skip(P.st.url); /* OK picks the best of the others */
   char s[400]; snprintf(s, sizeof s, "%s  ·  %s", t, P.canNext ? T("OK: try the next stream  ·  Back: close") : T("Press Back to close")); set_status(s); }
 /* why a stream did not play, in words: what its server answered, the torrent's peers, then the TV's own codes
@@ -1139,6 +1140,7 @@ static void build_btns(void) {
   if (P.isTrailer) { if (trSubsN) B("cc", "p_subs", T("Subtitles"), 0); } /* a trailer's captions: one press on, one off */
   else if (!live_title()) B("subs", "p_subs", T("Subtitles"), 0); /* (a live channel: none to choose) */
   if (!P.isTrailer) B("aud", "p_aud", T("Audio"), 0);
+  if (!P.isTrailer && (!strcmp(P.type, "movie") || !strcmp(P.type, "series"))) B("watch", "similar", T("Watch Together"), 0);
   const char *am = !strcmp(P.aspect, "fill") ? "Fill the screen" : !strcmp(P.aspect, "zoom") ? "Zoom" : "Original"; B("asp", "p_asp", T(am), 0);
   #undef B
   P.nbtn = i; if (P.bIdx >= i) P.bIdx = 0; if (fid) for (int k = 0; k < i; k++) if (!strcmp(P.btns[k].id, fid)) P.bIdx = k;
@@ -1162,7 +1164,13 @@ static void hide_osd(void) { P.mode = 0; P.osd = 0; extern void app_pointer_rest
 /* playing again: a live broadcast paused more than 3 s joins where the broadcast is now (it went on from the paused
    moment, no longer live); anything else goes on from where it stopped */
 static void play_on(void) { awayHold = 0; /* (asked to play: a phone's, behind, too) */ if (live_bcast() && P.pzSince > 0 && now_() - P.pzSince > 3) { P.pzSince = 0; video_live_rejoin(); } else video_play(); }
-static void toggle(void) { if (paused()) play_on(); else { video_pause(); save_progress(1); } }
+static void user_play(void) { if (!watch_control(WATCH_PLAY, video_time()) && paused()) play_on(); }
+static void user_pause(void) {
+  if (!watch_control(WATCH_PAUSE, video_time()) && !paused()) { video_pause(); save_progress(1); }
+}
+static void user_seek(double pos) { if (!watch_control(WATCH_SEEK, pos)) video_seek(pos); }
+static void toggle(void) { if (paused()) user_play(); else user_pause(); }
+
 
 /* ---- seeking: presses add up and commit 1.2 s after the last one ---- */
 /* ---- chapters on the seek bar (Settings: Chapters): gaps at each start, the one under the knob named in the seek
@@ -1206,7 +1214,7 @@ static void commit_seek(void) { if (P.seekT < 0) return; if (live_bcast()) { P.s
     if (!atChap && mkv_key_before(mkv, t, 1.5, &k)) { fprintf(stderr, "[seek] %.2f s snapped to the keyframe at %.2f s (%d known)\n", t, k, mkv_key_count(mkv)); t = k; }
   }
   if (getenv("SB_SEEKSNAP")) { P.seekSnapAt = now_(); P.seekSnapT = t; } /* (SB_SEEKSNAP=0: the times only, for the comparison) */
-  video_seek(t); P.seekTxtUntil = now_() + 0.9; }
+  user_seek(t); P.seekTxtUntil = now_() + 0.9; }
 static void cancel_seek(void) { P.seekT = -1; P.skm = 0; P.skOn = 0; P.seekTxtUntil = 0; }
 
 /* ---- picture size, three states always in this order: Original (the whole picture), Fill (fills the screen: a file
@@ -1249,7 +1257,7 @@ static void next_auto(void);
 static void dismiss_prompt(void) { if (P.prompt.k) P.dismissed[P.prompt.k] = 1; P.prompt.k = 0; if (P.mode == 3) P.mode = 0; paint_prompt(); }
 static void prompt_go(int i) {
   if (!P.prompt.k || i >= P.prompt.nbtn) return; const char *id = P.prompt.b[i].id;
-  if (!strcmp(id, "skip")) { P.dismissed[P.prompt.k] = 1; double to = P.prompt.b[i].to; P.prompt.k = 0; if (P.mode == 3) P.mode = 0; paint_prompt(); video_seek(to); }
+  if (!strcmp(id, "skip")) { P.dismissed[P.prompt.k] = 1; double to = P.prompt.b[i].to; P.prompt.k = 0; if (P.mode == 3) P.mode = 0; paint_prompt(); user_seek(to); }
   else if (!strcmp(id, "credits")) dismiss_prompt();
   else if (!strcmp(id, "coll")) { mark_watched(); save_progress(1); closeColl = 1; close_player(0, 0); } /* the next film: its page, its streams open */
   else go_next();
@@ -1763,7 +1771,7 @@ static int tray_key(int k) {
 
 /* ---- keys ---- */
 /* from the very start: the skips and the credits card are offered again */
-static void from_start(void) { cancel_seek(); memset(P.dismissed, 0, sizeof P.dismissed); P.prompt.k = 0; paint_prompt(); P.ended = 0; P.endGoAt = 0; video_seek(0); if (paused()) video_play(); show_osd(1); }
+static void from_start(void) { cancel_seek(); memset(P.dismissed, 0, sizeof P.dismissed); P.prompt.k = 0; paint_prompt(); P.ended = 0; P.endGoAt = 0; if (!watch_control(WATCH_RESTART, 0)) { video_seek(0); if (paused()) video_play(); } show_osd(1); }
 static struct { float x[4], y, w[4], h; } DG; /* the card's buttons, for the pointer */
 static void dly_draw(void);
 static void pos_draw(void);
@@ -1806,8 +1814,19 @@ static void pos_key(int k) {
   if (k == K_UP) pos_change(1); else if (k == K_DOWN) pos_change(-1); else if (k == K_OK) pos_close(); else if (k == K_LEFT || k == K_RIGHT) nudge_start(&P.nudge, k); }
 static struct { float y, h, ux, uw, dx, dw, ox, ow; } PZ; /* the card's parts, for the pointer */
 static void hub_from_player(void) { close_tray(); P.osd = 0; P.mode = 6; hub_open(1, P.id); } /* the live hub over the channel playing (mode 6) */
+static void watch_button(void) {
+  if (watch_active()) {
+    watch_leave();
+    toast(T("Watch Together room ended"), 2400, NULL);
+  } else if (P.live && !P.ended && P.vid[0] && dur() > 0 && !video_settling() && (video_state() == VID_PLAYING || paused())) {
+    cancel_seek(); P.prompt.autoN = 0;
+    watch_start(P.type, P.id, P.vid, &P.st, dur());
+  } else toast(T("Wait for this video to finish loading"), 2800, NULL);
+  show_osd(1);
+}
 static void act(const char *id) {
   if (!strcmp(id, "pp")) toggle(); else if (!strcmp(id, "beg")) from_start(); else if (!strcmp(id, "asp")) next_aspect(); else if (!strcmp(id, "nxt")) next_auto(); else if (!strcmp(id, "cc")) cc_toggle();
+  else if (!strcmp(id, "watch")) watch_button();
   else if (!strcmp(id, "chn")) { hub_from_player(); return; }
   else open_tray(!strcmp(id, "eps") ? 1 : !strcmp(id, "src") ? 2 : !strcmp(id, "aud") ? 3 : 4);
   arm_hide();
@@ -1837,8 +1856,8 @@ void player_key(int k, int down) {
   if (!P.started || !P.live || P.failed) { if (k == K_BACK || k == K_EXIT) close_player(0, 0); return; } /* the art is up (resolving): only Back does anything */
   P.hvOn = 0;
   if ((P.mode == 4 || P.mode == 5) && (k == K_PLAY || k == K_PAUSE || k == K_PLAYPAUSE)) { if (k == K_PLAYPAUSE || (k == K_PLAY) == paused()) toggle(); return; } /* the card stays: the controls don't come */
-  if (k == K_PLAY) { if (paused()) play_on(); show_osd(1); return; }
-  if (k == K_PAUSE) { if (!paused()) { video_pause(); save_progress(1); } show_osd(1); return; }
+  if (k == K_PLAY) { user_play(); show_osd(1); return; }
+  if (k == K_PAUSE) { user_pause(); show_osd(1); return; }
   if (k == K_PLAYPAUSE) { toggle(); show_osd(1); return; }
   if (k == K_STOP || k == K_EXIT) { close_player(0, 0); return; }
   if (k == K_REW) { seek_by(-1); return; } if (k == K_FF) { seek_by(1); return; }
@@ -1994,6 +2013,7 @@ static void hand_tick(float dt) { mo_tick(&handA, dt); if (handSnap.fbo && !hand
 static void hand_draw(void) { if (handSnap.fbo && handA.v > 0.001f) gfx_image(handSnap.tex, 0, 0, SB_W, SB_H, 0, WHITE_A((int)(255 * handA.v + .5f)), 0, 1, 1, 0); }
 static void np_stop(void);
 static void prepare(const char *vid, double startAt, int keepSubs) {
+  watch_leave();
   resumeMsg[0] = 0; loadGen++; np_stop(); /* (the next episode's pictures made ahead: kept, this one opens with them) */
   int again = P.open; char type[16]; snprintf(type, sizeof type, "%s", P.type);
   float artWas = again ? P.artA.v : 1; /* the art comes back from where it is (the page's .45 s), never at once */
@@ -2149,8 +2169,8 @@ void player_play_at(const Stream *s, const char *type, const char *id, const cha
 void player_cast(int cmd, double pos) {
   if (!P.open || P.closing) return;
   if (P.pw.on) { if (cmd == 2 || cmd == 5) pw_end("Play now, from the phone"); else if (cmd == 4) close_player(0, 0); return; } /* (waiting for the seek previews: play or Play now starts it, as OK; a pause changes nothing, it is held already) */
-  if (cmd == 1 && !paused()) { video_pause(); save_progress(1); } else if (cmd == 2 && paused()) play_on();
-  else if (cmd == 3 && P.live) video_seek(pos < 0 ? 0 : pos); else if (cmd == 4) close_player(0, 0);
+  if (cmd == 1) user_pause(); else if (cmd == 2) user_play();
+  else if (cmd == 3 && P.live) user_seek(pos < 0 ? 0 : pos); else if (cmd == 4) close_player(0, 0);
 }
 int player_cast_previews(int *pct, int *target, int *eta) { *pct = *target = *eta = 0; if (!P.open || P.closing || P.isTrailer || !P.pw.on) return 0;
   int p = sp_progress(); *pct = p < 0 ? 0 : p > 100 ? 100 : p; *target = P.pw.target; *eta = P.pw.etaShown && P.pw.eta > 0 && P.pw.eta <= 900 ? (int)ceil(P.pw.eta) : 0; return 1; } /* (the same numbers as the TV's line: made of 100, the share it waits for, the time left once known) */
@@ -2231,7 +2251,7 @@ static void finish_close(void) { if (hub_on() && hub_player_mode()) hub_close();
 static int closeNext, closeSim, closeArt; static double closeAt, closeT0; /* closeArt: closed on the loading screen (its line and words fade as the logo flies back) */
 static void close_player(int goNext, int goSim) {
   if (!P.open || P.closing) return; if (bestTok) { best_choose_cancel(bestTok); bestTok = 0; } P.closing = 1; ps_hold(0); sp_verify_reset(); np_stop(); NP.vid[0] = 0; /* (the next episode's pictures made so far: kept) */ /* (a lighter copy not taken yet: it reads on freely, nothing plays) */ closeArt = !P.live && P.artA.v > 0.999f; closeT0 = now_(); sx_begin_quick(0); /* the player's logo moves back to the page */ closeNext = goNext; closeSim = goSim; P.ssOn = 0; P.nx.tok = 0; P.sk.tok = 0;
-  scrobble_player_end(video_time(), dur(), 0); save_progress(1); video_pause(); /* (Test playback: nothing told, nothing kept) */
+  watch_leave(); scrobble_player_end(video_time(), dur(), 0); save_progress(1); video_pause(); /* (Test playback: nothing told, nothing kept) */
   /* the title's own picture fades back over the paused frame, the video goes, then the cover fades onto the app */
   closeAt = now_() + (closeArt ? 0.01 : 0.26); /* the cover fades back over the paused frame (see css()); from the loading screen the art fades at once, under the logo on its way back */
 }
@@ -2362,6 +2382,13 @@ static void css(void) {
 static void foc_update(void) {
   int fi = P.bIdx; if (P.mode == 2 && P.tray.kind) { int ak = P.tray.kind < 0 ? -P.tray.kind : P.tray.kind; int b = btn_index(ak == 1 || ak == 5 ? "eps" : ak == 6 ? "chn" : ak == 2 ? "src" : ak == 3 ? "aud" : "subs"); if (b >= 0) fi = b; }
   if (fi >= P.nbtn) fi = P.nbtn - 1; if (fi < 0) return;
+  if (!strcmp(P.btns[fi].id, "watch")) {
+    const char *label = T(watch_active() ? "End watch room" : "Watch Together");
+    if (strcmp(P.btns[fi].lb, label)) {
+      snprintf(P.btns[fi].lb, sizeof P.btns[fi].lb, "%s", label);
+      P.btns[fi].lw = text_width(P.btns[fi].lb, 24, 700, 0) + 22;
+    }
+  }
   /* the focused button opens into a pill with its name: the others slide aside, the pill and the name follow (0.32 s) */
   int show = P.live && ((P.mode == 1 && P.row == 0) || P.mode == 2); float lw = show && P.btns[fi].lb[0] ? P.btns[fi].lw : 0;
   for (int k = 0; k < P.nbtn; k++) { float dx = 0; if (fi < P.nL && k < P.nL && k > fi) dx = lw; if (fi >= P.nL && k >= P.nL && k <= fi) dx = -lw; mo_to(&P.btns[k].dx, dx, .32f, C_OUT, 0); }
@@ -2438,6 +2465,7 @@ void player_tick(float dt) {
   mo_tick(&SR.y, dt); mo_tick(&SR.plY, dt); mo_tick(&SR.plH, dt); mo_tick(&SR.plA, dt); tm_tick(dt); tray_swap_step(); src_tick(dt);
   if (!P.prompt.k && P.prA.v <= 0.001f) P.shown.k = 0;
   close_step(); if (P.closing) return;
+  watch_tick();
   if (P.resolving) { const char *st = p2p_status(); if (strcmp(st, status)) set_status(st); return; } /* the art: nothing for a few seconds, then why it is slow ("Finding peers…", "Getting the file list…") */
   VidState vs = video_state();
   /* Trakt: what plays, every frame (it decides when to tell; trailers and live broadcasts never) */
@@ -2510,6 +2538,7 @@ void player_tick(float dt) {
     if (vs == VID_ENDED && !P.ended) { P.ended = 1; scrobble_player_end(video_time(), dur(), 1); save_progress(1); mark_watched(); if (strcmp(store_get("bingeWatch", "true"), "false") && strcmp(store_get("enableNextVideo", "true"), "false") && P.next.has) P.endGoAt = now_() + 0.6; else close_player(0, 0); }
     if (P.endGoAt && now_() >= P.endGoAt) { P.endGoAt = 0; go_next(); if (!P.open || P.closing) return; }
     check_prompt();
+    if (watch_active()) P.prompt.autoN = 0;
     if (P.prompt.autoN && (P.prompt.k == 1 || P.prompt.k == 2) && now_() - P.prompt.t0 >= P.prompt.adur && !paused()) prompt_go(0);
     else if (P.prompt.autoN && P.prompt.k == 3 && now_() - P.prompt.t0 >= 10) { P.prompt.autoN = 0; next_auto(); }
     if (!P.live) return; /* a new episode is being found */
@@ -3181,6 +3210,12 @@ void player_draw(void) {
   else if (P.quiet && P.mode != 6) live_card_draw(); /* switching channels, nothing running yet: the corner pill alone */
   else if (P.artA.v < 0.999f) hand_draw();
   draw_art();
+  char watchMessage[160];
+  if (watch_status(P.osd, watchMessage, sizeof watchMessage)) {
+    float width = text_width(watchMessage, 24, 700, 0) + 40;
+    gfx_rrect((SB_W - width) / 2, 66, width, 46, 22, RGBA(14, 12, 22, 226));
+    text_draw(watchMessage, SB_W / 2, 76, 24, 700, WHITE_A(250), 0, 0, ALIGN_CENTER);
+  }
   gfx_opacity_pop();
 }
 static void chapters_hook(const char *url, int p2p) { (void)url; (void)p2p; P.chapWant = 1; }

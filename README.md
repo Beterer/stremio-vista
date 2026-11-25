@@ -16,6 +16,7 @@ This repository contains Vista's development and releases.
 ## Features
 - Home with Continue Watching first, followed by browsable catalogs from your enabled Stremio addons in account order, plus Library and Search
 - Browsing metadata in one row with duration in minutes, year, genres and IMDb rating
+- [Watch Together](docs/watch-together.md) with a friend on Stremio Web, with automatic synchronized start and shared playback controls
 - Seek previews: a picture of the film on the seek bar, for debrid and direct links
 - Trakt: link with a code, scrobbling, rows on Home, watched marks and Continue Watching from Trakt
 - Film collections in order, in the Library too, and the next film after the credits

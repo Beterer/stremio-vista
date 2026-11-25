@@ -27,4 +27,7 @@ unsigned httpd_hits(void);
 void httpd_set_key_handler(int (*fn)(const char *key));
 /* the same for the Trakt page's Save (the Trakt module): 1 = Trakt accepted the client id */
 void httpd_set_trakt_handler(int (*fn)(const char *key));
+#define WATCH_ORIGIN_CAP 256
+int watch_origin(const char *input, char out[WATCH_ORIGIN_CAP]);
+unsigned httpd_watch_origin(char *out, size_t cap); /* latest relay address entered on the phone */
 #endif

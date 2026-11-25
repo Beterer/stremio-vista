@@ -68,7 +68,7 @@ typedef struct Req {
   unsigned id; char *url, *hdr, *post, *ctype, *method; size_t postLen; NetCb cb; void *ud; long timeoutMs; cJSON *json; /* postLen: a raw body (net_send), else post is text; json: the body already parsed on the worker */
   int status; unsigned char *body; size_t len, cap; int cancelled, done;
   int size; double total;  /* net_size: only the headers are read */
-  int file;                /* net_file: url is a local path */
+  int file, direct;                /* net_file: url is a local path */
   struct Req *next;
 } Req;
 static pthread_mutex_t mu = PTHREAD_MUTEX_INITIALIZER;
@@ -83,7 +83,7 @@ static unsigned nextId = 1; static int npending;
 
 static size_t on_data(char *p, size_t s, size_t n, void *ud) {
   Req *r = ud; size_t add = s * n;
-  if (r->cancelled) return 0;
+  if (r->cancelled || (r->direct && r->len + add > 8192)) return 0;
   if (r->len + add + 1 > r->cap) { r->cap = (r->len + add + 1) * 2; r->body = realloc(r->body, r->cap); }
   memcpy(r->body + r->len, p, add); r->len += add; r->body[r->len] = 0; return add;
 }
@@ -179,7 +179,7 @@ static void perform(Req *r) {
   int keep; CURL *c = thread_handle(&keep); if (!c) { r->status = 0; return; }
   struct curl_slist *hs = NULL;
   f_easy_setopt(c, CURLOPT_URL, r->url); f_easy_setopt(c, CURLOPT_WRITEFUNCTION, on_data); f_easy_setopt(c, CURLOPT_WRITEDATA, r); struct curl_slist *pin = ts_pin(c, r->url);
-  f_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L); f_easy_setopt(c, CURLOPT_MAXREDIRS, 8L); f_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
+  f_easy_setopt(c, CURLOPT_FOLLOWLOCATION, r->direct ? 0L : 1L); f_easy_setopt(c, CURLOPT_MAXREDIRS, 8L); f_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);
   f_easy_setopt(c, CURLOPT_CONNECTTIMEOUT_MS, 8000L); f_easy_setopt(c, CURLOPT_TIMEOUT_MS, r->timeoutMs > 0 ? r->timeoutMs : 20000L);
   f_easy_setopt(c, CURLOPT_USERAGENT, ua()); if (!r->size) f_easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
   if (caPath[0]) f_easy_setopt(c, CURLOPT_CAINFO, caPath);
@@ -289,21 +289,22 @@ static void push_req(Req *r) { /* under mu */
 unsigned net_get_first(const char *url, NetCb cb, void *ud) {
   Req *r = calloc(1, sizeof *r); r->url = strdup(url); r->cb = cb; r->ud = ud;
   pthread_mutex_lock(&mu); r->id = nextId++; r->next = queue; queue = r; if (!queueTail) queueTail = r; npending++; pthread_cond_signal(&cv); pthread_mutex_unlock(&mu); return r->id; }
-static unsigned enqueue_x(const char *url, const char *hdr, const char *post, const char *ctype, long timeoutMs, int size, NetCb cb, void *ud) {
-  Req *r = calloc(1, sizeof *r); r->url = strdup(url); r->hdr = hdr ? strdup(hdr) : NULL; r->post = post ? strdup(post) : NULL; r->ctype = ctype ? strdup(ctype) : NULL; r->cb = cb; r->ud = ud; r->timeoutMs = timeoutMs; r->size = size;
+static unsigned enqueue_x(const char *url, const char *hdr, const char *post, const char *ctype, long timeoutMs, int size, int direct, NetCb cb, void *ud) {
+  Req *r = calloc(1, sizeof *r); r->url = strdup(url); r->hdr = hdr ? strdup(hdr) : NULL; r->post = post ? strdup(post) : NULL; r->ctype = ctype ? strdup(ctype) : NULL; r->cb = cb; r->ud = ud; r->timeoutMs = timeoutMs; r->size = size; r->direct = direct;
   pthread_mutex_lock(&mu);
   r->id = nextId++; push_req(r); npending++;
   pthread_mutex_unlock(&mu);
   return r->id;
 }
-static unsigned enqueue_c(const char *url, const char *hdr, const char *post, const char *ctype, long timeoutMs, NetCb cb, void *ud) { return enqueue_x(url, hdr, post, ctype, timeoutMs, 0, cb, ud); }
-static unsigned enqueue_t(const char *url, const char *hdr, const char *post, long timeoutMs, NetCb cb, void *ud) { return enqueue_x(url, hdr, post, NULL, timeoutMs, 0, cb, ud); }
+static unsigned enqueue_c(const char *url, const char *hdr, const char *post, const char *ctype, long timeoutMs, NetCb cb, void *ud) { return enqueue_x(url, hdr, post, ctype, timeoutMs, 0, 0, cb, ud); }
+static unsigned enqueue_t(const char *url, const char *hdr, const char *post, long timeoutMs, NetCb cb, void *ud) { return enqueue_x(url, hdr, post, NULL, timeoutMs, 0, 0, cb, ud); }
 static unsigned enqueue(const char *url, const char *hdr, const char *post, NetCb cb, void *ud) { return enqueue_t(url, hdr, post, 0, cb, ud); }
 unsigned net_get_timeout(const char *url, int timeoutMs, NetCb cb, void *ud) { return enqueue_t(url, NULL, NULL, timeoutMs, cb, ud); }
 unsigned net_get(const char *url, NetCb cb, void *ud) { return enqueue(url, NULL, NULL, cb, ud); }
 unsigned net_get_hdr(const char *url, const char *hdr, NetCb cb, void *ud) { return enqueue(url, hdr, NULL, cb, ud); }
-unsigned net_size(const char *url, NetCb cb, void *ud) { return enqueue_x(url, NULL, NULL, NULL, 10000, 1, cb, ud); }
+unsigned net_size(const char *url, NetCb cb, void *ud) { return enqueue_x(url, NULL, NULL, NULL, 10000, 1, 0, cb, ud); }
 unsigned net_post_json(const char *url, const char *json, NetCb cb, void *ud) { return enqueue(url, NULL, json, cb, ud); }
+unsigned net_post_json_direct(const char *url, const char *json, int timeoutMs, NetCb cb, void *ud) { return enqueue_x(url, NULL, json, NULL, timeoutMs, 0, 1, cb, ud); }
 unsigned net_post_hdr_t(const char *url, const char *body, const char *contentType, const char *headers, int timeoutMs, NetCb cb, void *ud) {
   return enqueue_c(url, headers, body ? body : "", contentType ? contentType : "", timeoutMs, cb, ud);
 }
